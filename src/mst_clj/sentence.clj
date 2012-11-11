@@ -13,7 +13,7 @@
   (invoke [this idx] (get (.words this) idx))
   
   clojure.lang.Associative
-  (assoc [this k v] (assoc (.words this) k v))
+  (assoc [this k v] (Sentence. (assoc (.words this) k v) (.edge-fvs this)))
   (valAt [this idx] (nth (.words this) idx nil)))
 
 (defn make [words]
