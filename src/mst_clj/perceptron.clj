@@ -16,7 +16,7 @@
       (let [w (reduce (fn [w {head :head, modifier :idx}]
                         (reduce (fn [w idx]
                                   (update-in w [idx] nil-inc))
-                                w (get-fv gold head modifier)))
+                                w (get-in (.edge-fvs gold) [head modifier])))
                       weight gold)]
         (reduce (fn [w {head :head, modifier :idx}]
                   (reduce (fn [w idx]
@@ -24,5 +24,5 @@
                               (if (zero? (get w idx))
                                 (dissoc w idx)
                                 w)))
-                          w (get-fv prediction head modifier)))
+                          w (get-in (.edge-fvs prediction) [head modifier])))
                 w prediction)))))
