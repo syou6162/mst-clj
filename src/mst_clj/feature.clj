@@ -9,34 +9,112 @@
   `(let [name# (defn ~feature-name ~args ~@body)]
      (swap! feature-names conj name#)))
 
-(def-feature-fn surface-to-surface-feature
-  [sentence i j]
-  (let [wi (:surface (nth sentence i))
-        wj (:surface (nth sentence j))]
-    (struct feature
-            'surface-to-surface-feature
-            (str wi "-AND-" wj))))
+(defmacro def-conjunctive-feature-fn [& fs-list]
+  (let [fs (vec fs-list)
+        feature-name (symbol (apply str (interpose "-and-" fs)))]
+    `(def-feature-fn ~feature-name [sentence# i# j#]
+       (let [result# (->> ~fs
+                          (map (fn [f#] (f# sentence# i# j#)))
+                          (interpose "-and-")
+                          (apply str))]
+         result#))))
 
-(def-feature-fn surface-to-pos-feature
-  [sentence i j]
-  (let [wi (:surface (nth sentence i))
-        pj (:pos-tag (nth sentence j))]
-    (struct feature
-            'surface-to-pos-feature
-            (str wi "-AND-" pj))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Basic Uni-gram Features
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-feature-fn pos-to-surface-feature
-  [sentence i j]
-  (let [pi (:pos-tag (nth sentence i))
-        wj (:surface (nth sentence j))]
-    (struct feature
-            'pos-to-surface-feature
-            (str pi "-AND-" wj))))
+(def-feature-fn p-word [sentence i j]
+  (get-in sentence [i :surface]))
 
-(def-feature-fn pos-to-pos-feature
-  [sentence i j]
-  (let [pi (:pos-tag (nth sentence i))
-        pj (:pos-tag (nth sentence j))]
-    (struct feature
-            'pos-to-pos-feature
-            (str pi "-AND-" pj))))
+(def-feature-fn p-pos [sentence i j]
+  (get-in sentence [i :pos-tag]))
+
+(def-conjunctive-feature-fn p-word p-pos)
+
+(def-feature-fn c-word [sentence i j]
+  (get-in sentence [j :surface]))
+
+(def-feature-fn c-pos [sentence i j]
+  (get-in sentence [j :pos-tag]))
+
+(def-conjunctive-feature-fn c-word c-pos)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Basic Bi-gram Features
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-conjunctive-feature-fn p-word p-pos c-word c-pos)
+(def-conjunctive-feature-fn p-pos c-word c-pos)
+(def-conjunctive-feature-fn p-word c-word c-pos)
+(def-conjunctive-feature-fn p-word p-pos c-pos)
+(def-conjunctive-feature-fn p-word p-pos c-word)
+(def-conjunctive-feature-fn p-word c-word)
+(def-conjunctive-feature-fn p-pos c-pos)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; In Between POS Features
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Surrounding Word POS Features
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-feature-fn p-plus-word [sentence i j]
+  (get-in sentence [(inc i) :surface]))
+
+(def-feature-fn p-plus-pos [sentence i j]
+  (get-in sentence [(inc i) :pos-tag]))
+
+(def-feature-fn p-minus-word [sentence i j]
+  (get-in sentence [(dec i) :surface]))
+
+(def-feature-fn p-minus-pos [sentence i j]
+  (get-in sentence [(dec i) :pos-tag]))
+
+;;;;;
+
+(def-feature-fn c-plus-word [sentence i j]
+  (get-in sentence [(inc j) :surface]))
+
+(def-feature-fn c-plus-pos [sentence i j]
+  (get-in sentence [(inc j) :pos-tag]))
+
+(def-feature-fn c-minus-word [sentence i j]
+  (get-in sentence [(dec j) :surface]))
+
+(def-feature-fn c-minus-pos [sentence i j]
+  (get-in sentence [(dec j) :pos-tag]))
+
+;;;;;
+
+(def-conjunctive-feature-fn p-pos p-plus-pos c-minus-pos c-pos)
+(def-conjunctive-feature-fn p-minus-pos p-pos c-minus-pos c-pos)
+(def-conjunctive-feature-fn p-pos p-plus-pos c-pos c-plus-pos)
+(def-conjunctive-feature-fn p-minus-pos p-pos c-pos c-plus-pos)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Distance Features
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-feature-fn distance-1-feature [sentence i j]
+  (= 1 (Math/abs (- i j))))
+
+(def-feature-fn distance-2-feature [sentence i j]
+  (= 2 (Math/abs (- i j))))
+
+(def-feature-fn distance-3-feature [sentence i j]
+  (= 3 (Math/abs (- i j))))
+
+(def-feature-fn distance-4-beyond-feature [sentence i j]
+  (<= 4 (Math/abs (- i j))))
+
+(defn get-fv [sentence i j]
+  (let [fv (->> (seq @feature-names)
+                (map (fn [feature-fn]
+                       (struct feature feature-fn
+                               (feature-fn sentence i j))))
+                (flatten)
+                (filter (fn [fv] (not (nil? (:str fv))))))]
+    (->> fv
+         (map feature-to-id)
+         (vec))))
