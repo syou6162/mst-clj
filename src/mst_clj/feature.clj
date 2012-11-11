@@ -111,7 +111,7 @@
 (defn get-fv [sentence i j]
   (let [fv (->> (seq @feature-names)
                 (map (fn [feature-fn]
-                       (struct feature feature-fn
+                       (struct feature (str feature-fn)
                                (feature-fn sentence i j))))
                 (flatten)
                 (filter (fn [fv] (not (nil? (:str fv))))))]
