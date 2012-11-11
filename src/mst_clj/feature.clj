@@ -97,16 +97,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def-feature-fn distance-1-feature [sentence i j]
-  (= 1 (Math/abs (- i j))))
+  (str (= 1 (Math/abs (- i j)))))
 
 (def-feature-fn distance-2-feature [sentence i j]
-  (= 2 (Math/abs (- i j))))
+  (str (= 2 (Math/abs (- i j)))))
 
 (def-feature-fn distance-3-feature [sentence i j]
-  (= 3 (Math/abs (- i j))))
+  (str (= 3 (Math/abs (- i j)))))
 
 (def-feature-fn distance-4-beyond-feature [sentence i j]
-  (<= 4 (Math/abs (- i j))))
+  (str (<= 4 (Math/abs (- i j)))))
 
 (defn get-fv [sentence i j]
   (let [fv (->> (seq @feature-names)
