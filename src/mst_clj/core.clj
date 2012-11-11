@@ -1,11 +1,14 @@
 (ns mst-clj.core
   (:use [mst-clj.eisner])
+  (:use [mst-clj.word])
   (:use [mst-clj.perceptron])
+  (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
   (:use [mst-clj.evaluation])
   (:use [mst-clj.io])
   (:use [clj-utils.core :only (split-with-ratio)])
-  (:use [clj-utils.io :only (serialize deserialize)]))
+  (:use [clj-utils.io :only (serialize deserialize)])
+  (:use [clojure.string :only (split)]))
 
 (require '[clojure.tools.cli :as cli])
 
@@ -52,12 +55,35 @@
                                              (nth sentences sent-idx)
                                              (eisner (nth sentences sent-idx) weight))))))))))))
 
+(defn- read-gold-sentences [filename]
+  (->> (split (slurp filename) #"\n\n")
+       (pmap (fn [lines]
+               (let [[words pos-tags labels heads]
+                     (map (fn [line]
+                            (map clojure.string/lower-case (split line #"\t")))
+                          (split lines #"\n"))
+                     words (vec (map (fn [w pos-tag idx head]
+                                       (struct word w pos-tag
+                                               idx head))
+                                     (vec (cons Root words))
+                                     (vec (cons Root pos-tags))
+                                     (vec (range (inc (count words))))
+                                     (vec (cons -1 (map
+                                                    #(Integer/parseInt %)
+                                                    heads)))))]
+                 words)))
+       (vec)))
+
 (defn eval-mode [filename model-filename feature-to-id-filename]
-  (let [_ (feature/load-feature-to-id feature-to-id-filename)
+  (let [_ (binding [*out* *err*] (println (str "Started reading " feature-to-id-filename)))
+        _ (time (feature/load-feature-to-id feature-to-id-filename))
+        _ (binding [*out* *err*] (println (str "Finished reading " feature-to-id-filename)))
         weight (deserialize model-filename)
-        golds (read-mst-format-file filename)
+        _ (binding [*out* *err*] (println "Started reading gold sentences..."))
+        golds (read-gold-sentences filename)
+        _ (binding [*out* *err*] (println "Finished reading gold sentences..."))
         parse (parse-fn weight)
-        predictions (doall (pmap parse golds))]
+        predictions (doall (pmap (comp parse sentence/make) golds))]
     (binding [*out* *err*]
       (println "\nNumber of features: " (count weight))
       (println (get-dependency-accuracy golds predictions))
