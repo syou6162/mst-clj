@@ -19,7 +19,10 @@
            ["--feature-to-id-filename" "File name of the feature2id mapping" :default "feature-to-id.bin"]))
 
 (defn parse-fn [weight]
-  (fn [sentence] (eisner sentence weight)))
+  (fn [sentence] (do (binding [*out* *err*]
+                       (print ".")
+                       (flush))
+                     (eisner sentence weight))))
 
 (defn train-mode [filename max-iter model-filename feature-to-id-filename]
   (let [sentences (read-mst-format-file filename)
