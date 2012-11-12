@@ -117,4 +117,5 @@
                 (filter (fn [fv] (not (nil? (:str fv))))))]
     (->> fv
          (map feature-to-id)
+         (into (vector-of :int))
          (vec))))
