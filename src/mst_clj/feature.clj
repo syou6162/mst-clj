@@ -1,55 +1,84 @@
 (ns mst-clj.feature
-  (:use [clj-utils.mapping]))
+  (:use [clojure.math.combinatorics])
+  (:use [mst-clj.mapping]))
 
 (def-obj-and-id-mapping feature)
 (defstruct feature :type :str)
 (def feature-names (atom []))
 
-(defmacro def-feature-fn [feature-name args & body]
-  `(let [name# (defn ~feature-name ~args ~@body)]
-     (swap! feature-names conj name#)))
+(defmacro def-feature-fn
+  ([feature-name] `(swap! feature-names conj ~feature-name))
+  ([feature-name args & body]
+     `(let [name# (defn ~feature-name ~args ~@body)]
+        (swap! feature-names conj name#))))
 
 (defmacro def-conjunctive-feature-fn [& fs-list]
   (let [fs (vec fs-list)
         feature-name (symbol (apply str (interpose "-and-" fs)))]
-    `(def-feature-fn ~feature-name [sentence# i# j#]
-       (let [result# (->> ~fs
-                          (map (fn [f#] (f# sentence# i# j#)))
-                          (interpose "-and-")
-                          (apply str))]
+    `(defn ~feature-name [sentence# i# j#]
+       (let [strs# (map (fn [f#] (f# sentence# i# j#)) ~fs)
+             result# (if (every? #(not (nil? %)) strs#)
+                       (->> strs# (interpose "-and-") (apply str))
+                       nil)]
          result#))))
+
+(defmacro def-conjunctive-features-fn [features-a features-b]
+  (list* 'do (map (fn [[a b]] `(def-feature-fn (def-conjunctive-feature-fn ~a ~b)))
+                  (cartesian-product features-a features-b))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Uni-gram Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-feature-fn p-word [sentence i j]
-  (get-in sentence [i :surface]))
+(def unigram-feature
+  [(defn p-word [sentence i j] (get-in sentence [i :surface]))
+   (defn p-word5 [sentence i j] (let [surface (get-in sentence [i :surface])]
+                                  (if (and (not (keyword? surface)) (< 5 (count surface)))
+                                    (subs surface 0 5))))
+   (defn p-pos [sentence i j] (get-in sentence [i :pos-tag]))
+   (def-conjunctive-feature-fn p-word p-pos)
+   (def-conjunctive-feature-fn p-word5 p-pos)
 
-(def-feature-fn p-pos [sentence i j]
-  (get-in sentence [i :pos-tag]))
-
-(def-conjunctive-feature-fn p-word p-pos)
-
-(def-feature-fn c-word [sentence i j]
-  (get-in sentence [j :surface]))
-
-(def-feature-fn c-pos [sentence i j]
-  (get-in sentence [j :pos-tag]))
-
-(def-conjunctive-feature-fn c-word c-pos)
+   (defn c-word [sentence i j] (get-in sentence [j :surface]))
+   (defn c-word5 [sentence i j] (let [surface (get-in sentence [j :surface])]
+                                  (if (and (not (keyword? surface)) (< 5 (count surface)))
+                                    (subs surface 0 5))))
+   (defn c-pos [sentence i j] (get-in sentence [j :pos-tag]))
+   (def-conjunctive-feature-fn c-word c-pos)
+   (def-conjunctive-feature-fn c-word5 c-pos)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Bi-gram Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-conjunctive-feature-fn p-word p-pos c-word c-pos)
-(def-conjunctive-feature-fn p-pos c-word c-pos)
-(def-conjunctive-feature-fn p-word c-word c-pos)
-(def-conjunctive-feature-fn p-word p-pos c-pos)
-(def-conjunctive-feature-fn p-word p-pos c-word)
-(def-conjunctive-feature-fn p-word c-word)
-(def-conjunctive-feature-fn p-pos c-pos)
+(def bigram-features
+  [(def-conjunctive-feature-fn p-word p-pos c-word c-pos)
+   (def-conjunctive-feature-fn p-word5 p-pos c-word c-pos)
+   (def-conjunctive-feature-fn p-word p-pos c-word5 c-pos)
+   (def-conjunctive-feature-fn p-word5 p-pos c-word5 c-pos)
+
+   (def-conjunctive-feature-fn p-pos c-word c-pos)
+   (def-conjunctive-feature-fn p-pos c-word5 c-pos)
+
+   (def-conjunctive-feature-fn p-word c-word c-pos)
+   (def-conjunctive-feature-fn p-word5 c-word c-pos)
+   (def-conjunctive-feature-fn p-word c-word5 c-pos)
+   (def-conjunctive-feature-fn p-word5 c-word5 c-pos)
+
+   (def-conjunctive-feature-fn p-word p-pos c-pos)
+   (def-conjunctive-feature-fn p-word5 p-pos c-pos)
+
+   (def-conjunctive-feature-fn p-word p-pos c-word)
+   (def-conjunctive-feature-fn p-word5 p-pos c-word)
+   (def-conjunctive-feature-fn p-word p-pos c-word5)
+   (def-conjunctive-feature-fn p-word5 p-pos c-word5)
+
+   (def-conjunctive-feature-fn p-word c-word)
+   (def-conjunctive-feature-fn p-word5 c-word)
+   (def-conjunctive-feature-fn p-word c-word5)
+   (def-conjunctive-feature-fn p-word5 c-word5)
+
+   (def-conjunctive-feature-fn p-pos c-pos)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; In Between POS Features
@@ -59,54 +88,39 @@
 ;; Surrounding Word POS Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-feature-fn p-plus-word [sentence i j]
-  (get-in sentence [(inc i) :surface]))
+(defn p-plus-pos [sentence i j] (get-in sentence [(inc i) :pos-tag]))
+(defn p-minus-pos [sentence i j] (get-in sentence [(dec i) :pos-tag]))
+(defn c-plus-pos [sentence i j] (get-in sentence [(inc j) :pos-tag]))
+(defn c-minus-pos [sentence i j] (get-in sentence [(dec j) :pos-tag]))
 
-(def-feature-fn p-plus-pos [sentence i j]
-  (get-in sentence [(inc i) :pos-tag]))
-
-(def-feature-fn p-minus-word [sentence i j]
-  (get-in sentence [(dec i) :surface]))
-
-(def-feature-fn p-minus-pos [sentence i j]
-  (get-in sentence [(dec i) :pos-tag]))
-
-;;;;;
-
-(def-feature-fn c-plus-word [sentence i j]
-  (get-in sentence [(inc j) :surface]))
-
-(def-feature-fn c-plus-pos [sentence i j]
-  (get-in sentence [(inc j) :pos-tag]))
-
-(def-feature-fn c-minus-word [sentence i j]
-  (get-in sentence [(dec j) :surface]))
-
-(def-feature-fn c-minus-pos [sentence i j]
-  (get-in sentence [(dec j) :pos-tag]))
-
-;;;;;
-
-(def-conjunctive-feature-fn p-pos p-plus-pos c-minus-pos c-pos)
-(def-conjunctive-feature-fn p-minus-pos p-pos c-minus-pos c-pos)
-(def-conjunctive-feature-fn p-pos p-plus-pos c-pos c-plus-pos)
-(def-conjunctive-feature-fn p-minus-pos p-pos c-pos c-plus-pos)
+(def surrounding-word-pos-features
+  [(def-conjunctive-feature-fn p-pos p-plus-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-minus-pos p-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-pos p-plus-pos c-pos c-plus-pos)
+   (def-conjunctive-feature-fn p-minus-pos p-pos c-pos c-plus-pos)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Distance Features
+;; Direction and Distance Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-feature-fn distance-1-feature [sentence i j]
-  (str (= 1 (Math/abs (- i j)))))
+(defn direction-and-distance-feature [sentence i j]
+  (let [direction (if (< i j) :left :right)
+        dist (Math/abs (- i j))
+        dist-flag (cond (= dist 1) :1
+                        (and (<= 2 dist) (>= 5 dist)) :2-5
+                        :else :6)]
+    (str direction dist-flag)))
 
-(def-feature-fn distance-2-feature [sentence i j]
-  (str (= 2 (Math/abs (- i j)))))
+(def all-basic-features
+  (map (comp :name meta)
+       (concat unigram-feature bigram-features surrounding-word-pos-features)))
 
-(def-feature-fn distance-3-feature [sentence i j]
-  (str (= 3 (Math/abs (- i j)))))
+(defmacro def-all-features []
+  (list* `do (map
+              (fn [f] `(def-feature-fn (def-conjunctive-feature-fn direction-and-distance-feature ~f)))
+              all-basic-features)))
 
-(def-feature-fn distance-4-beyond-feature [sentence i j]
-  (str (<= 4 (Math/abs (- i j)))))
+(def-all-features)
 
 (defn get-fv [sentence i j]
   (let [fv (->> (seq @feature-names)
