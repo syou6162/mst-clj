@@ -18,3 +18,12 @@
         a-sym (with-meta (gensym "a") {:tag hint})]
     `(let [~a-sym ~nested-array]
        (aset ~a-sym ~idx ~v))))
+
+(defmacro memory-usage [& exprs]
+  (letfn [(current-total-memory-usage []
+            (System/gc)
+            (- (.. Runtime getRuntime totalMemory)
+               (.. Runtime getRuntime freeMemory)))]
+    `(let [pre# (current-total-memory-usage)]
+       ~@exprs
+       (- (current-total-memory-usage) pre#))))
