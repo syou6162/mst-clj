@@ -125,11 +125,9 @@
 (defn get-fv [sentence i j]
   (let [fv (->> (seq @feature-names)
                 (map (fn [feature-fn]
-                       (struct feature (str feature-fn)
-                               (feature-fn sentence i j))))
-                (flatten)
+                       (struct feature (str feature-fn) (feature-fn sentence i j))))
                 (filter (fn [fv] (not (nil? (:str fv))))))]
     (->> fv
+         (map (fn [feature] (str (:type feature) (:str feature))))
          (map feature-to-id)
-         (into (vector-of :int))
-         (vec))))
+         (into-array Integer/TYPE))))
