@@ -5,6 +5,26 @@
 
 (def Root :root)
 
+(defn lines-to-words [lines]
+  (let [[words pos-tags labels heads] (map (fn [line]
+                                             (map clojure.string/lower-case (split line #"\t")))
+                                           (split lines #"\n"))
+        words (vec (map (fn [w pos-tag idx head]
+                          (struct word w pos-tag idx head))
+                        (vec (cons Root words))
+                        (vec (cons Root pos-tags))
+                        (vec (range (inc (count words))))
+                        (vec (cons -1 (map
+                                       #(Integer/parseInt %)
+                                       heads)))))]
+    words))
+
+(defn lines-to-sentence [lines]
+  (binding [*out* *err*]
+    (print ".")
+    (flush))
+  (sentence/make (lines-to-words lines)))
+
 (defn read-mst-format-file [filename]
   "Read correct parsed sentences from mst formal file.
    File format is as follows:
@@ -21,24 +41,10 @@
   (binding [*out* *err*]
     (println "Creating Instances..."))
   (->> (split (slurp filename) #"\n\n")
-       (map-indexed #(vector %1 %2))
-       (pmap (fn [[sent-idx lines]]
-               (let [[words pos-tags labels heads]
-                     (map (fn [line]
-                            (map clojure.string/lower-case (split line #"\t")))
-                          (split lines #"\n"))
-                     words (vec (map (fn [w pos-tag idx head]
-                                       (struct word w pos-tag
-                                               idx head))
-                                     (vec (cons Root words))
-                                     (vec (cons Root pos-tags))
-                                     (vec (range (inc (count words))))
-                                     (vec (cons -1 (map
-                                                    #(Integer/parseInt %)
-                                                    heads)))))]
-                 (do
-                   (binding [*out* *err*]
-                     (print ".")
-                     (flush))
-                   (sentence/make words)))))
+       (pmap lines-to-sentence)
+       (vec)))
+
+(defn read-gold-sentences [filename]
+  (->> (split (slurp filename) #"\n\n")
+       (pmap lines-to-words)
        (vec)))

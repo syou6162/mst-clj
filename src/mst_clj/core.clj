@@ -2,13 +2,14 @@
   (:use [mst-clj.eisner])
   (:use [mst-clj.word])
   (:use [mst-clj.perceptron])
+  (:use [mst-clj.io])
+  (:use [mst-clj.evaluation])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
-  (:use [mst-clj.evaluation])
-  (:use [mst-clj.io])
   (:use [clj-utils.core :only (split-with-ratio)])
   (:use [clj-utils.io :only (serialize deserialize)])
-  (:use [clojure.string :only (split)]))
+  (:use [clojure.string :only (split)])
+  (:gen-class))
 
 (require '[clojure.tools.cli :as cli])
 
@@ -41,7 +42,8 @@
                    model-filename)
         (do
           (binding [*out* *err*]
-            (println (str "\nIteration: " iter)))
+            (println (str "\nIteration: " iter))
+            (println "Weight dimentions: " (count weight)))
           (recur (inc iter)
                  (loop [sent-idx 0, weight weight]
                    (if (= sent-idx (count sentences))
@@ -54,25 +56,6 @@
                               (update-weight weight
                                              (nth sentences sent-idx)
                                              (eisner (nth sentences sent-idx) weight))))))))))))
-
-(defn- read-gold-sentences [filename]
-  (->> (split (slurp filename) #"\n\n")
-       (pmap (fn [lines]
-               (let [[words pos-tags labels heads]
-                     (map (fn [line]
-                            (map clojure.string/lower-case (split line #"\t")))
-                          (split lines #"\n"))
-                     words (vec (map (fn [w pos-tag idx head]
-                                       (struct word w pos-tag
-                                               idx head))
-                                     (vec (cons Root words))
-                                     (vec (cons Root pos-tags))
-                                     (vec (range (inc (count words))))
-                                     (vec (cons -1 (map
-                                                    #(Integer/parseInt %)
-                                                    heads)))))]
-                 words)))
-       (vec)))
 
 (defn eval-mode [filename model-filename feature-to-id-filename]
   (let [_ (binding [*out* *err*] (println (str "Started reading " feature-to-id-filename)))
