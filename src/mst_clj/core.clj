@@ -28,14 +28,20 @@
                        (flush))
                      (eisner sentence weight))))
 
+(defn averaged-weight [weight iter n]
+  (->> weight
+       (map (fn [[idx v]]  [idx (/ v (* iter n))]))
+       (apply concat)
+       (apply hash-map)))
+
 (defn train-mode [filename max-iter model-filename feature-to-id-filename]
   (let [sentences (read-mst-format-file filename)
         _ (feature/save-feature-to-id feature-to-id-filename)
         _ (feature/clear-feature-mapping!)]
-    (loop [iter 0, weight {}]
+    (loop [iter 0, weight {}, cum-weight {}]
       (if (= iter max-iter)
         (serialize (with-meta
-                     weight
+                     (averaged-weight cum-weight iter (count sentences))
                      {:filename filename
                       :num-of-training-sentences (count sentences)
                       :max-iter max-iter})
@@ -44,18 +50,24 @@
           (binding [*out* *err*]
             (println (str "\nIteration: " iter))
             (println "Weight dimentions: " (count weight)))
-          (recur (inc iter)
-                 (loop [sent-idx 0, weight weight]
-                   (if (= sent-idx (count sentences))
-                     weight
-                     (do
-                       (binding [*out* *err*]
-                         (print ".")
-                         (flush))
-                       (recur (inc sent-idx)
-                              (update-weight weight
-                                             (nth sentences sent-idx)
-                                             (eisner (nth sentences sent-idx) weight))))))))))))
+          (let [[new-weight cum-weight] (loop [sent-idx 0, weight weight, cum-weight cum-weight]
+                                          (if (= sent-idx (count sentences))
+                                            [weight cum-weight] ; weight
+                                            (do
+                                              (binding [*out* *err*]
+                                                (print ".")
+                                                (flush))
+                                              (let [next-instance (nth sentences sent-idx)
+                                                    new-weight (update-weight weight
+                                                                              next-instance
+                                                                              (eisner next-instance weight))
+                                                    cum-weight (merge-with + cum-weight new-weight)]
+                                                (recur (inc sent-idx)
+                                                       new-weight
+                                                       cum-weight)))))]
+            (recur (inc iter)
+                   new-weight
+                   cum-weight)))))))
 
 (defn eval-mode [filename model-filename feature-to-id-filename]
   (let [_ (binding [*out* *err*] (println (str "Started reading " feature-to-id-filename)))
