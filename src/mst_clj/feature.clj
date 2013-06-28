@@ -1,31 +1,17 @@
 (ns mst-clj.feature
   (:use [clojure.math.combinatorics])
-  (:use [mst-clj.mapping]))
+  (:use [mst-clj.mapping :only (def-obj-and-id-mapping)])
   (:import [mst_clj.word Word]))
 
 (def-obj-and-id-mapping feature)
-(defstruct feature :type :str)
-(def feature-names (atom []))
-
-(defmacro def-feature-fn
-  ([feature-name] `(swap! feature-names conj ~feature-name))
-  ([feature-name args & body]
-     `(let [name# (defn ~feature-name ~args ~@body)]
-        (swap! feature-names conj name#))))
 
 (defmacro def-conjunctive-feature-fn [& fs-list]
   (let [fs (vec fs-list)
-        feature-name (symbol (apply str (interpose "-and-" fs)))]
+        feature-name (symbol (clojure.string/join "-and-" fs))]
     `(defn ~feature-name [sentence# i# j#]
-       (let [strs# (map (fn [f#] (f# sentence# i# j#)) ~fs)
-             result# (if (every? #(not (nil? %)) strs#)
-                       (->> strs# (interpose "-and-") (apply str))
-                       nil)]
-         result#))))
-
-(defmacro def-conjunctive-features-fn [features-a features-b]
-  (list* 'do (map (fn [[a b]] `(def-feature-fn (def-conjunctive-feature-fn ~a ~b)))
-                  (cartesian-product features-a features-b))))
+       (->> ~fs
+            (map (fn [f#] (f# sentence# i# j#)))
+            (clojure.string/join "-and-")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Uni-gram Features
