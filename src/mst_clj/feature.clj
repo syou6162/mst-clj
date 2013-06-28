@@ -119,15 +119,9 @@
     (str direction dist-flag)))
 
 (def all-basic-features
-  (map (comp :name meta)
-       (concat unigram-feature bigram-features surrounding-word-pos-features)))
-
-(defmacro def-all-features []
-  (list* `do (map
-              (fn [f] `(def-feature-fn (def-conjunctive-feature-fn direction-and-distance-feature ~f)))
-              all-basic-features)))
-
-(def-all-features)
+  (->> [unigram-feature bigram-features
+        surrounding-word-pos-features]
+       (reduce into [])))
 
 (defn get-fv [sentence i j]
   (let [fv (->> (seq @feature-names)
