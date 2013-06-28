@@ -1,6 +1,7 @@
 (ns mst-clj.feature
   (:use [clojure.math.combinatorics])
   (:use [mst-clj.mapping]))
+  (:import [mst_clj.word Word]))
 
 (def-obj-and-id-mapping feature)
 (defstruct feature :type :str)
@@ -31,19 +32,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def unigram-feature
-  [(defn p-word [sentence i j] (get-in sentence [i :surface]))
-   (defn p-word5 [sentence i j] (let [surface (get-in sentence [i :surface])]
-                                  (if (and (not (keyword? surface)) (< 5 (count surface)))
-                                    (subs surface 0 5))))
-   (defn p-pos [sentence i j] (get-in sentence [i :pos-tag]))
+  [(defn p-word [sentence ^long i ^long j]
+     (.surface ^Word (nth sentence i)))
+
+   (defn p-word5 [sentence i j]
+     (let [surface (.surface ^Word (nth sentence i))]
+       (if (and (not (keyword? surface)) (< 5 (count surface)))
+         (subs surface 0 5))))
+
+   (defn p-pos [sentence ^long i ^long j]
+     (.pos-tag ^Word (nth sentence i)))
+
    (def-conjunctive-feature-fn p-word p-pos)
    (def-conjunctive-feature-fn p-word5 p-pos)
 
-   (defn c-word [sentence i j] (get-in sentence [j :surface]))
-   (defn c-word5 [sentence i j] (let [surface (get-in sentence [j :surface])]
-                                  (if (and (not (keyword? surface)) (< 5 (count surface)))
-                                    (subs surface 0 5))))
-   (defn c-pos [sentence i j] (get-in sentence [j :pos-tag]))
+   (defn c-word [sentence ^long i ^long j]
+     (.surface ^Word (nth sentence j)))
+
+   (defn c-word5 [sentence i j]
+     (let [surface (.surface ^Word (nth sentence j))]
+       (if (and (not (keyword? surface)) (< 5 (count surface)))
+         (subs surface 0 5))))
+
+   (defn c-pos [sentence ^long i ^long j]
+     (.pos-tag ^Word (nth sentence j)))
+
    (def-conjunctive-feature-fn c-word c-pos)
    (def-conjunctive-feature-fn c-word5 c-pos)])
 
@@ -88,10 +101,18 @@
 ;; Surrounding Word POS Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn p-plus-pos [sentence i j] (get-in sentence [(inc i) :pos-tag]))
-(defn p-minus-pos [sentence i j] (get-in sentence [(dec i) :pos-tag]))
-(defn c-plus-pos [sentence i j] (get-in sentence [(inc j) :pos-tag]))
-(defn c-minus-pos [sentence i j] (get-in sentence [(dec j) :pos-tag]))
+(defn p-plus-pos [sentence ^long i ^long j]
+  (if (< (inc i) (count sentence))
+    (.pos-tag ^Word (nth sentence (inc i)))))
+(defn p-minus-pos [sentence ^long i ^long j]
+  (if (not (neg? (dec i)))
+    (.pos-tag ^Word (nth sentence (dec i)))))
+(defn c-plus-pos [sentence ^long i ^long j]
+  (if (< (inc j) (count sentence))
+    (.pos-tag ^Word (nth sentence (inc j)))))
+(defn c-minus-pos [sentence ^long i ^long j]
+  (if (not (neg? (dec j)))
+    (.pos-tag ^Word (nth sentence (dec j)))))
 
 (def surrounding-word-pos-features
   [(def-conjunctive-feature-fn p-pos p-plus-pos c-minus-pos c-pos)
