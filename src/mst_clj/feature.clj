@@ -110,9 +110,9 @@
 ;; Direction and Distance Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn direction-and-distance-feature [sentence i j]
+(defn direction-and-distance-feature [sentence ^long i ^long j]
   (let [direction (if (< i j) :left :right)
-        dist (Math/abs (- i j))
+        dist (Math/abs (int (- i j)))
         dist-flag (cond (= dist 1) :1
                         (and (<= 2 dist) (>= 5 dist)) :2-5
                         :else :6)]
