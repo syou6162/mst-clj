@@ -124,11 +124,14 @@
        (reduce into [])))
 
 (defn get-fv [sentence i j]
-  (let [fv (->> (seq @feature-names)
-                (map (fn [feature-fn]
-                       (struct feature (str feature-fn) (feature-fn sentence i j))))
-                (filter (fn [fv] (not (nil? (:str fv))))))]
-    (->> fv
-         (map (fn [feature] (str (:type feature) (:str feature))))
-         (map feature-to-id)
-         (into-array Integer/TYPE))))
+  (let [dir-dist-feature (direction-and-distance-feature sentence i j)]
+    (->> all-basic-features
+         (mapv (fn [feature-fn]
+                 (-> (str "dir-and-dist-and-"
+                          dir-dist-feature
+                          "-and-"
+                          (-> feature-fn meta :name)
+                          "-and-"
+                          (feature-fn sentence i j))
+                     feature-to-id)))
+         (int-array))))
