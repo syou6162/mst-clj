@@ -1,16 +1,17 @@
 (ns mst-clj.io
-  (:use [mst-clj.word])
+  (:import [mst_clj.word Word])
   (:require [mst-clj.sentence :as sentence])
   (:use [clojure.string :only (split)]))
 
 (def Root :root)
 
 (defn lines-to-words [lines]
-  (let [[words pos-tags labels heads] (map (fn [line]
-                                             (map clojure.string/lower-case (split line #"\t")))
-                                           (split lines #"\n"))
+  (let [[words pos-tags labels heads] (->> (split lines #"\n")
+                                           (mapv (fn [line]
+                                                   (->> (split line #"\t")
+                                                        (mapv clojure.string/lower-case)))))
         words (vec (map (fn [w pos-tag idx head]
-                          (struct word w pos-tag idx head))
+                          (Word. w pos-tag idx head))
                         (vec (cons Root words))
                         (vec (cons Root pos-tags))
                         (vec (range (inc (count words))))
