@@ -8,9 +8,9 @@
   (let [fs (vec fs-list)
         feature-name (symbol (clojure.string/join "-and-" fs))]
     `(defn ~feature-name [sentence# i# j#]
-       (->> ~fs
-            (map (fn [f#] (f# sentence# i# j#)))
-            (clojure.string/join "-and-")))))
+       (let [tmp# (map (fn [f#] (f# sentence# i# j#)) ~fs)]
+         (if (every? #(not (nil? %)) tmp#)
+           (clojure.string/join \& tmp#))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Uni-gram Features
