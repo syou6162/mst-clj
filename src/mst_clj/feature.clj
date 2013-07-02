@@ -1,5 +1,4 @@
 (ns mst-clj.feature
-  (:use [clojure.math.combinatorics])
   (:use [mst-clj.mapping :only (def-obj-and-id-mapping)])
   (:import [mst_clj.word Word]))
 
