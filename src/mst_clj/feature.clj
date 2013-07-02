@@ -128,13 +128,9 @@
 
 (defn get-fv [sentence i j]
   (let [dir-dist-feature (direction-and-distance-feature sentence i j)]
-    (->> all-basic-features
-         (mapv (fn [feature-fn]
-                 (-> (str "dir-and-dist-and-"
-                          dir-dist-feature
-                          "-and-"
-                          (-> feature-fn meta :name)
-                          "-and-"
-                          (feature-fn sentence i j))
-                     feature-to-id)))
+    (->> (map-indexed #(vector %1 %2) all-basic-features)
+         (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
+         (remove #(-> % second nil?))
+         (mapv (fn [[idx f]] (str dir-dist-feature \& idx \& f)))
+         (map feature-to-id)
          (int-array))))
