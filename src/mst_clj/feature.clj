@@ -110,12 +110,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn direction-and-distance-feature [sentence ^long i ^long j]
-  (let [direction (if (< i j) :left :right)
+  (let [direction (if (< i j) \l \r)
         dist (Math/abs (int (- i j)))
-        dist-flag (cond (= dist 1) :1
-                        (and (<= 2 dist) (>= 5 dist)) :2-5
-                        :else :6)]
-    (str direction dist-flag)))
+        dist-flag (cond (= dist 1) 1
+                        (= dist 2) 2
+                        (= dist 3) 3
+                        (= dist 4) 4
+                        (= dist 5) 5
+                        (and (<= 5 dist) (>= 10 dist)) 10
+                        :else 11)]
+    (str direction \& dist-flag)))
 
 (def all-basic-features
   (->> [unigram-feature bigram-features
