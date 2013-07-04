@@ -1,41 +1,32 @@
 (ns mst-clj.mapping
   (:use [clj-utils.io :only (serialize deserialize)]))
 
-(import StringToIntPatriciaTrie)
-
 (defmacro def-obj-and-id-mapping [obj-name]
-  "Define the functions related to converting object <=> id."
-  (let [obj-to-id (symbol (str obj-name "-to-id"))
-        id-to-obj (symbol (str "id-to-" obj-name))
+  "Define the functions related to converting object => id."
+  (let [*update-obj-id?* (-> (symbol (str "*update-" obj-name "-id?*"))
+                             (vary-meta assoc :dynamic true))
+        obj-to-id (symbol (str obj-name "-to-id"))
         save-obj-to-id (symbol (str "save-" obj-name "-to-id"))
-        load-obj-to-id (symbol (str "load-" obj-name "-to-id"))
+        load-obj-to-id! (symbol (str "load-" obj-name "-to-id!"))
         clear-obj-mapping! (symbol (str "clear-" obj-name "-mapping!"))
-        max-obj-id (symbol (str "max-" obj-name "-id"))]
-    `(let [obj-to-id-mapping# (atom (StringToIntPatriciaTrie/factory))
-           id-to-obj-mapping# (atom [])]
+        obj-to-id-mapping (symbol (str obj-name "-to-id-mapping"))
+        get-max-obj-id (symbol (str "get-max-" obj-name "-id"))]
+    `(let [obj-to-id-mapping# (atom {})]
        (do
+         (def ~*update-obj-id?* true)
          (defn ~obj-to-id [obj#]
-           (let [max-id# (count @obj-to-id-mapping#)]
-             (if (.containsKey @obj-to-id-mapping# obj#)
-               (.selectValue @obj-to-id-mapping# obj#)
-               (do (.put @obj-to-id-mapping# obj# max-id#)
-                   (swap! id-to-obj-mapping# conj obj#)
-                   max-id#))))
-         (defn ~id-to-obj [id#]
-           (nth @id-to-obj-mapping# id#))
+           (if ~*update-obj-id?*
+             (if-let [v# (get @obj-to-id-mapping# obj#)]
+               v#
+               (let [max-id# (count @obj-to-id-mapping#)]
+                 (swap! obj-to-id-mapping# assoc obj# max-id#)
+                 max-id#))
+             (get @obj-to-id-mapping# obj#)))
          (defn ~save-obj-to-id [filename#]
-           (serialize {:obj-to-id-mapping @obj-to-id-mapping#
-                       :id-to-obj-mapping @id-to-obj-mapping#}
-                      filename#))
-         (defn ~load-obj-to-id [filename#]
-           (let [maps# (deserialize filename#)]
-             (do
-               (reset! obj-to-id-mapping# (:obj-to-id-mapping maps#))
-               (reset! id-to-obj-mapping# (:id-to-obj-mapping maps#))
-               nil)))
+           (serialize @obj-to-id-mapping# filename#))
+         (defn ~load-obj-to-id! [filename#]
+           (reset! obj-to-id-mapping# (deserialize filename#)))
          (defn ~clear-obj-mapping! []
-           (do (.clear @obj-to-id-mapping#)
-               (reset! id-to-obj-mapping# [])
-               nil))
-         (defn ~max-obj-id []
-           (.size @obj-to-id-mapping#))))))
+           (reset! obj-to-id-mapping# {}))
+         (defn ~obj-to-id-mapping [] @obj-to-id-mapping#)
+         (defn ~get-max-obj-id [] (count @obj-to-id-mapping#))))))

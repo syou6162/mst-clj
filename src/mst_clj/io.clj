@@ -1,16 +1,17 @@
 (ns mst-clj.io
-  (:use [mst-clj.word])
+  (:import [mst_clj.word Word])
   (:require [mst-clj.sentence :as sentence])
   (:use [clojure.string :only (split)]))
 
 (def Root :root)
 
 (defn lines-to-words [lines]
-  (let [[words pos-tags labels heads] (map (fn [line]
-                                             (map clojure.string/lower-case (split line #"\t")))
-                                           (split lines #"\n"))
+  (let [[words pos-tags labels heads] (->> (split lines #"\n")
+                                           (mapv (fn [line]
+                                                   (->> (split line #"\t")
+                                                        (mapv clojure.string/lower-case)))))
         words (vec (map (fn [w pos-tag idx head]
-                          (struct word w pos-tag idx head))
+                          (Word. w pos-tag idx head))
                         (vec (cons Root words))
                         (vec (cons Root pos-tags))
                         (vec (range (inc (count words))))
@@ -18,12 +19,6 @@
                                        #(Integer/parseInt %)
                                        heads)))))]
     words))
-
-(defn lines-to-sentence [lines]
-  (binding [*out* *err*]
-    (print ".")
-    (flush))
-  (sentence/make (lines-to-words lines)))
 
 (defn read-mst-format-file [filename]
   "Read correct parsed sentences from mst formal file.
@@ -41,10 +36,10 @@
   (binding [*out* *err*]
     (println "Creating Instances..."))
   (->> (split (slurp filename) #"\n\n")
-       (pmap lines-to-sentence)
-       (vec)))
+       (map lines-to-words)
+       (mapv sentence/make-training-data)))
 
 (defn read-gold-sentences [filename]
   (->> (split (slurp filename) #"\n\n")
-       (pmap lines-to-words)
-       (vec)))
+       (map lines-to-words)
+       (mapv sentence/make-test-data)))

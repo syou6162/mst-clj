@@ -1,3 +1,3 @@
 (ns mst-clj.word)
 
-(defstruct word :surface :pos-tag :idx :head)
+(defrecord Word [^String surface ^String pos-tag ^long idx ^long head])
