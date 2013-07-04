@@ -2,12 +2,40 @@
   (:import [mst_clj.word Word])
   (:import [mst_clj.sentence Sentence]))
 
-(defn score-fn [^doubles weight ^Sentence sentence]
+(defn innter-product [^doubles weight fv]
+  (reduce
+   (fn [result [fv-idx v]]
+     (+ result (* (aget weight fv-idx) v)))
+   0.0
+   fv))
+
+(defn norm [fv]
+  (reduce
+   (fn [result [k v]] (+ result (* v v)))
+   0.0
+   fv))
+
+(defn error-count [^Sentence gold ^Sentence prediction]
+  (->> (map vector (rest (:words gold)) (rest (:words prediction)))
+       (filter (fn [[x y]]
+                 (not= (:head x) (:head y))))
+       (count)))
+
+(defn score-fn' [^doubles weight ^Sentence sentence]
   (fn [i j]
     (let [fv (get-in sentence [:edge-fvs i j])]
       (areduce ^ints fv idx result (double 0.0)
                (+ result (aget weight
                                (aget ^ints fv idx)))))))
+
+(def score-fn score-fn')
+
+(defn training-score-fn [^doubles weight ^Sentence sentence]
+  (fn [i j]
+    (let [score ((score-fn' weight sentence) i j)]
+      (if (= i (:head (nth (:words sentence) j)))
+        score
+        (inc score)))))
 
 (defn nil-safe-adder [base add] (if (nil? base) add (+ base add)))
 
@@ -45,19 +73,35 @@
           [])
          (mapv #(vector %1 1.0)))))
 
+(defn step-size-fn [^doubles weight ^Sentence gold ^Sentence prediction]
+  (let [num-errors (error-count gold prediction)
+        fv-diff (fv-diff (concat-edge-fvs gold) (concat-edge-fvs prediction))
+        in-prod (innter-product weight fv-diff)
+        n (norm fv-diff)
+        step-size (if (zero? n)
+                    ;; goldなものでなくてもfvの次元ではexactに一致し
+                    ;; normが0になってしまう場合が存在する。
+                    ;; その場合0割を防ぐ必要がある
+                    0.0
+                    (->> (/ (- num-errors in-prod) n)
+                         (max 0.0)))]
+    (fn [x] (* x step-size))))
+
 (defn update-weight
   "w = w + (phi(x_i, y_i) - phi(x_i, hat{y_i}))"
   [^doubles weight ^Sentence gold ^Sentence prediction]
   (if (= (map #(:head ^Word %) (:words gold))
          (map #(:head ^Word %) (:words prediction)))
     weight
-    (->> (fv-diff (concat-edge-fvs gold) (concat-edge-fvs prediction))
-         (reduce (fn [^doubles result [fv-idx v]]
-                   (aset ^doubles result
-                         fv-idx
-                         (double (+ v (aget ^doubles result fv-idx))))
-                   result)
-                 weight))))
+    (let [step-size-fn (step-size-fn weight gold prediction)]
+      (->> (fv-diff (concat-edge-fvs gold) (concat-edge-fvs prediction))
+           (map (fn [[k v]] [k (step-size-fn v)]))
+           (reduce (fn [^doubles result [fv-idx v]]
+                     (aset ^doubles result
+                           fv-idx
+                           (double (+ v (aget ^doubles result fv-idx))))
+                     result)
+                   weight)))))
 
 (defn averaged-weight
   ([^doubles weight cum-count]
