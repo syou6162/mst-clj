@@ -20,12 +20,6 @@
                                        heads)))))]
     words))
 
-(defn lines-to-sentence [lines]
-  (binding [*out* *err*]
-    (print ".")
-    (flush))
-  (sentence/make (lines-to-words lines)))
-
 (defn read-mst-format-file [filename]
   "Read correct parsed sentences from mst formal file.
    File format is as follows:
@@ -42,10 +36,10 @@
   (binding [*out* *err*]
     (println "Creating Instances..."))
   (->> (split (slurp filename) #"\n\n")
-       (pmap lines-to-sentence)
-       (vec)))
+       (map lines-to-words)
+       (mapv sentence/make-training-data)))
 
 (defn read-gold-sentences [filename]
   (->> (split (slurp filename) #"\n\n")
-       (pmap lines-to-words)
-       (vec)))
+       (map lines-to-words)
+       (mapv sentence/make-test-data)))
