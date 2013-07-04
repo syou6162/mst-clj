@@ -151,11 +151,16 @@
        (reduce into [])))
 
 (defn get-fv [sentence i j]
-  (let [dir-dist-feature (direction-and-distance-feature sentence i j)]
-    (->> (map-indexed #(vector %1 %2) all-basic-features)
-         (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
-         (remove #(-> % second nil?))
-         (map (fn [[idx f]] (str dir-dist-feature \& idx \& f)))
+  (let [dir-dist-feature (direction-and-distance-feature sentence i j)
+        all-basic-features (->> (map-indexed #(vector %1 %2) all-basic-features)
+                                (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
+                                (remove #(-> % second nil?))
+                                (mapv (fn [[idx f]] (str idx \& f))))
+        bet-fv (mapv #(str "b&" %) (between-features sentence i j))]
+    (->> (into all-basic-features bet-fv)
+         (map (fn [f] [f (str dir-dist-feature \& f)]))
+         (reduce into [])
+         (cons dir-dist-feature)
          (map feature-to-id)
          (remove nil?)
          (int-array))))
