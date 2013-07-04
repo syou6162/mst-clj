@@ -20,12 +20,6 @@
                                        heads)))))]
     words))
 
-(defn lines-to-sentence [lines]
-  (binding [*out* *err*]
-    (print ".")
-    (flush))
-  (sentence/make (lines-to-words lines)))
-
 (defn read-mst-format-file [filename]
   "Read correct parsed sentences from mst formal file.
    File format is as follows:
