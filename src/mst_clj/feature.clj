@@ -1,5 +1,4 @@
 (ns mst-clj.feature
-  (:use [clojure.math.combinatorics])
   (:use [mst-clj.mapping :only (def-obj-and-id-mapping)])
   (:import [mst_clj.word Word]))
 
@@ -9,9 +8,14 @@
   (let [fs (vec fs-list)
         feature-name (symbol (clojure.string/join "-and-" fs))]
     `(defn ~feature-name [sentence# i# j#]
-       (->> ~fs
-            (map (fn [f#] (f# sentence# i# j#)))
-            (clojure.string/join "-and-")))))
+       (let [tmp# (map (fn [f#] (f# sentence# i# j#)) ~fs)]
+         (if (every? #(not (nil? %)) tmp#)
+           (clojure.string/join \& tmp#))))))
+
+(defn normalize [^String s]
+  (cond (keyword? s) s
+        (.matches s "[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+") "<num>"
+        :else s))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Uni-gram Features
@@ -19,10 +23,10 @@
 
 (def unigram-feature
   [(defn p-word [sentence ^long i ^long j]
-     (.surface ^Word (nth sentence i)))
+     (normalize (.surface ^Word (nth sentence i))))
 
    (defn p-word5 [sentence i j]
-     (let [surface (.surface ^Word (nth sentence i))]
+     (let [surface (p-word sentence i j)]
        (if (and (not (keyword? surface)) (< 5 (count surface)))
          (subs surface 0 5))))
 
@@ -33,10 +37,10 @@
    (def-conjunctive-feature-fn p-word5 p-pos)
 
    (defn c-word [sentence ^long i ^long j]
-     (.surface ^Word (nth sentence j)))
+     (normalize (.surface ^Word (nth sentence j))))
 
    (defn c-word5 [sentence i j]
-     (let [surface (.surface ^Word (nth sentence j))]
+     (let [surface (c-word sentence i j)]
        (if (and (not (keyword? surface)) (< 5 (count surface)))
          (subs surface 0 5))))
 
@@ -111,12 +115,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn direction-and-distance-feature [sentence ^long i ^long j]
-  (let [direction (if (< i j) :left :right)
+  (let [direction (if (< i j) \l \r)
         dist (Math/abs (int (- i j)))
-        dist-flag (cond (= dist 1) :1
-                        (and (<= 2 dist) (>= 5 dist)) :2-5
-                        :else :6)]
-    (str direction dist-flag)))
+        dist-flag (cond (= dist 1) 1
+                        (= dist 2) 2
+                        (= dist 3) 3
+                        (= dist 4) 4
+                        (= dist 5) 5
+                        (and (<= 5 dist) (>= 10 dist)) 10
+                        :else 11)]
+    (str direction \& dist-flag)))
 
 (def all-basic-features
   (->> [unigram-feature bigram-features
@@ -125,13 +133,9 @@
 
 (defn get-fv [sentence i j]
   (let [dir-dist-feature (direction-and-distance-feature sentence i j)]
-    (->> all-basic-features
-         (mapv (fn [feature-fn]
-                 (-> (str "dir-and-dist-and-"
-                          dir-dist-feature
-                          "-and-"
-                          (-> feature-fn meta :name)
-                          "-and-"
-                          (feature-fn sentence i j))
-                     feature-to-id)))
+    (->> (map-indexed #(vector %1 %2) all-basic-features)
+         (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
+         (remove #(-> % second nil?))
+         (mapv (fn [[idx f]] (str dir-dist-feature \& idx \& f)))
+         (map feature-to-id)
          (int-array))))

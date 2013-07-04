@@ -78,7 +78,7 @@
         golds (read-gold-sentences filename)
         _ (binding [*out* *err*] (println "Finished reading gold sentences..."))
         parse (parse-fn weight)
-        predictions (doall (pmap (comp parse sentence/make) golds))]
+        predictions (doall (map parse golds))]
     (binding [*out* *err*]
       (println "\nNumber of features: " (count weight))
       (println (get-dependency-accuracy golds predictions))
