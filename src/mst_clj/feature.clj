@@ -88,16 +88,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn between-features [sentence ^long i ^long j]
-  (->> (range (inc (min i j)) (max i j))
-       (reduce
-        (fn [result mid-idx]
-          (let [i-pos (if (< (inc i) (count sentence))
-                        (.pos-tag ^Word (nth sentence i)))
-                mid-pos (.pos-tag ^Word (nth sentence mid-idx))
-                j-pos (if (< (inc j) (count sentence))
-                        (.pos-tag ^Word (nth sentence j)))]
-            (conj result (str i-pos \& mid-pos \& j-pos))))
-        [])))
+  (let [i-pos (if (< (inc i) (count sentence))
+                (.pos-tag ^Word (nth sentence i)))
+        j-pos (if (< (inc j) (count sentence))
+                (.pos-tag ^Word (nth sentence j)))]
+    (->> (range (inc (min i j)) (max i j))
+         (map (fn [mid-idx] (.pos-tag ^Word (nth sentence mid-idx))))
+         (set)
+         (vec)
+         (reduce
+          (fn [result mid-pos]
+            (conj result (str i-pos \& mid-pos \& j-pos)))
+          []))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Surrounding Word POS Features
