@@ -23,7 +23,7 @@
                       (reduce (fn [result i]
                                 (let [j (.head ^Word (nth words i))
                                       fv (get-fv words i j)]
-                                  (assoc-in result [i j])))
+                                  (assoc-in result [i j] fv)))
                               init-edge-fvs))]
     (->> (for [i (range n), j (range 1 n)
                :when (and (not= i j)
