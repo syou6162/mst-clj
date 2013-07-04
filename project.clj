@@ -1,4 +1,4 @@
-(defproject mst-clj "0.0.1"
+(defproject mst-clj "0.0.3"
   :description "MST parser"
   :url "https://github.com/syou6162/mst-clj"
   :license {:name "Eclipse Public License"
