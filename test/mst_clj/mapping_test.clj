@@ -26,4 +26,9 @@
        (feature-to-id "a") 2
        (feature-to-id "b") 0
        (feature-to-id "d") 1
+       (get-max-feature-id) 3
+
+       (binding [*update-feature-id?* false]
+         (feature-to-id "e"))
+       nil
        (get-max-feature-id) 3))
