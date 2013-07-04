@@ -12,16 +12,21 @@
          (if (every? #(not (nil? %)) tmp#)
            (clojure.string/join \& tmp#))))))
 
+(defn normalize [^String s]
+  (cond (keyword? s) s
+        (.matches s "[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+") "<num>"
+        :else s))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Uni-gram Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def unigram-feature
   [(defn p-word [sentence ^long i ^long j]
-     (.surface ^Word (nth sentence i)))
+     (normalize (.surface ^Word (nth sentence i))))
 
    (defn p-word5 [sentence i j]
-     (let [surface (.surface ^Word (nth sentence i))]
+     (let [surface (p-word sentence i j)]
        (if (and (not (keyword? surface)) (< 5 (count surface)))
          (subs surface 0 5))))
 
@@ -32,10 +37,10 @@
    (def-conjunctive-feature-fn p-word5 p-pos)
 
    (defn c-word [sentence ^long i ^long j]
-     (.surface ^Word (nth sentence j)))
+     (normalize (.surface ^Word (nth sentence j))))
 
    (defn c-word5 [sentence i j]
-     (let [surface (.surface ^Word (nth sentence j))]
+     (let [surface (c-word sentence i j)]
        (if (and (not (keyword? surface)) (< 5 (count surface)))
          (subs surface 0 5))))
 
