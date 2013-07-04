@@ -1,17 +1,17 @@
-(ns mst-clj.evaluation)
+(ns mst-clj.evaluation
+  (:import [mst_clj.sentence Sentence]))
 
 (defn get-dependency-accuracy [original-sentences parsed-sentences]
   "original-sentences: flat sentences
    parsed-sentences: sentences with hierarchical structure"
-  (let [original-sentences (rest original-sentences) ;; remove root
-        parsed-sentences (rest parsed-sentences) ;; remove root
-        pairs (map (fn [[original-sentence parsed-sentence]]
+  (let [pairs (map (fn [[^Sentence original-sentence
+                         ^Sentence parsed-sentence]]
                      (let [num-of-correct-heads (reduce + (map (fn [[gold predict]]
                                                                  (if (= gold predict) 1.0 0.0))
                                                                (map vector
-                                                                    (map :head original-sentence)
-                                                                    (map :head parsed-sentence))))]
-                       (vector num-of-correct-heads (count original-sentence))))
+                                                                    (map :head (rest (:words original-sentence)))
+                                                                    (map :head (rest (:words parsed-sentence))))))]
+                       (vector num-of-correct-heads (dec (count (:words original-sentence))))))
                    (map vector original-sentences parsed-sentences))
         corrects (map first pairs)
         lengths (map second pairs)]
@@ -24,8 +24,8 @@
                          (fn [sum sent-idx]
                            (if (every? (fn [[gold predict]] (= gold predict))
                                        (map vector
-                                            (map :head (rest (nth original-sentences sent-idx)))
-                                            (map :head (rest (nth parsed-sentences sent-idx)))))
+                                            (map :head (:words (nth original-sentences sent-idx)))
+                                            (map :head (:words (nth parsed-sentences sent-idx)))))
                              (+ 1.0 sum)
                              sum))
                          0.0
