@@ -2,19 +2,7 @@
   (:import [mst_clj.word Word])
   (:use [mst-clj.feature :only (*update-feature-id?* get-fv)]))
 
-(deftype Sentence [words edge-fvs]
-  clojure.lang.Seqable
-  (seq [this] (seq (.words this)))
-
-  clojure.lang.Counted
-  (count [this] (count (.words this)))
-
-  clojure.lang.IFn
-  (invoke [this idx] (get (.words this) idx))
-  
-  clojure.lang.Associative
-  (assoc [this k v] (Sentence. (assoc (.words this) k v) (.edge-fvs this)))
-  (valAt [this idx] (nth (.words this) idx nil)))
+(defrecord Sentence [words edge-fvs])
 
 (defn make-training-data [words]
   (let [n (count words)
