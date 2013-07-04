@@ -136,6 +136,7 @@
     (->> (map-indexed #(vector %1 %2) all-basic-features)
          (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
          (remove #(-> % second nil?))
-         (mapv (fn [[idx f]] (str dir-dist-feature \& idx \& f)))
+         (map (fn [[idx f]] (str dir-dist-feature \& idx \& f)))
          (map feature-to-id)
+         (remove nil?)
          (int-array))))

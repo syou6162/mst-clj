@@ -30,32 +30,35 @@
 
 (defn train-mode [filename max-iter model-filename feature-to-id-filename]
   (let [sentences (read-mst-format-file filename)
-        _ (feature/save-feature-to-id feature-to-id-filename)
-        _ (feature/clear-feature-mapping!)]
-    (loop [iter 0, weight {}]
+        weight-dim (inc (feature/max-feature-id))]
+    (feature/save-feature-to-id feature-to-id-filename)
+    (feature/clear-feature-mapping!)
+    (loop [iter 0,
+           weight (double-array weight-dim)
+           cum-weight (double-array weight-dim)]
       (if (= iter max-iter)
-        (serialize (with-meta
-                     weight
-                     {:filename filename
-                      :num-of-training-sentences (count sentences)
-                      :max-iter max-iter})
+        (serialize (averaged-weight cum-weight (* iter (count sentences)))
                    model-filename)
         (do
-          (binding [*out* *err*]
-            (println (str "\nIteration: " iter))
-            (println "Weight dimentions: " (count weight)))
-          (recur (inc iter)
-                 (loop [sent-idx 0, weight weight]
-                   (if (= sent-idx (count sentences))
-                     weight
-                     (do
-                       (binding [*out* *err*]
-                         (print ".")
-                         (flush))
-                       (recur (inc sent-idx)
-                              (update-weight weight
-                                             (nth sentences sent-idx)
-                                             (eisner (nth sentences sent-idx) weight))))))))))))
+          (let [predictions (mapv #(eisner % weight) sentences)]
+            (println
+             (str iter ", "
+                  (get-dependency-accuracy sentences predictions) ", "
+                  (get-complete-accuracy sentences predictions))))
+          (let [[new-weight cum-weight] (loop [sent-idx 0, weight weight, cum-weight cum-weight]
+                                          (if (= sent-idx (count sentences))
+                                            [weight cum-weight]
+                                            (do
+                                              (binding [*out* *err*]
+                                                (print ".")
+                                                (flush))
+                                              (let [gold (nth sentences sent-idx)
+                                                    prediction (with-redefs [score-fn training-score-fn]
+                                                                 (eisner gold weight))
+                                                    new-weight (update-weight weight gold prediction)
+                                                    cum-weight (add-weight new-weight cum-weight)]
+                                                (recur (inc sent-idx) new-weight cum-weight)))))]
+            (recur (inc iter) new-weight cum-weight)))))))
 
 (defn eval-mode [filename model-filename feature-to-id-filename]
   (let [_ (binding [*out* *err*] (println (str "Started reading " feature-to-id-filename)))
@@ -66,7 +69,7 @@
         golds (read-gold-sentences filename)
         _ (binding [*out* *err*] (println "Finished reading gold sentences..."))
         parse (parse-fn weight)
-        predictions (doall (map parse golds))]
+        predictions (mapv parse golds)]
     (binding [*out* *err*]
       (println "\nNumber of features: " (count weight))
       (println (get-dependency-accuracy golds predictions))
