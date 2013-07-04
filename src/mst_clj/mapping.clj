@@ -21,9 +21,7 @@
                (let [max-id# (count @obj-to-id-mapping#)]
                  (swap! obj-to-id-mapping# assoc obj# max-id#)
                  max-id#))
-             (if-let [v# (get @obj-to-id-mapping# obj#)]
-               v#
-               (inc (count @obj-to-id-mapping#)))))
+             (get @obj-to-id-mapping# obj#)))
          (defn ~save-obj-to-id [filename#]
            (serialize @obj-to-id-mapping# filename#))
          (defn ~load-obj-to-id [filename#]
