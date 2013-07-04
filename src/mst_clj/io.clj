@@ -42,10 +42,10 @@
   (binding [*out* *err*]
     (println "Creating Instances..."))
   (->> (split (slurp filename) #"\n\n")
-       (pmap lines-to-sentence)
-       (vec)))
+       (map lines-to-words)
+       (mapv sentence/make-training-data)))
 
 (defn read-gold-sentences [filename]
   (->> (split (slurp filename) #"\n\n")
-       (pmap lines-to-words)
-       (vec)))
+       (map lines-to-words)
+       (mapv sentence/make-test-data)))
