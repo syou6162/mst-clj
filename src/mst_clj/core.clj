@@ -52,10 +52,10 @@
                                               (binding [*out* *err*]
                                                 (print ".")
                                                 (flush))
-                                              (let [next-instance (nth sentences sent-idx)
-                                                    new-weight (update-weight weight
-                                                                              next-instance
-                                                                              (eisner next-instance weight))
+                                              (let [gold (nth sentences sent-idx)
+                                                    prediction (with-redefs [score-fn training-score-fn]
+                                                                 (eisner gold weight))
+                                                    new-weight (update-weight weight gold prediction)
                                                     cum-weight (add-weight new-weight cum-weight)]
                                                 (recur (inc sent-idx) new-weight cum-weight)))))]
             (recur (inc iter) new-weight cum-weight)))))))
