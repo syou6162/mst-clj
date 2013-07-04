@@ -1,4 +1,5 @@
 (ns mst-clj.eisner
+  (:import [mst_clj.sentence Sentence])
   (:use [mst-clj.common])
   (:use [mst-clj.perceptron]))
 
@@ -17,8 +18,8 @@
 (defn init-dp-table [n]
   (make-array Double/TYPE n n 2 2))
 
-(defn eisner [sentence weight]
-  (let [n (count sentence)
+(defn eisner [^Sentence sentence ^doubles weight]
+  (let [n (count (:words sentence))
         dp-table (init-dp-table n)
         backtrack-pointer (atom {})
         S (score-fn weight sentence)]
@@ -55,6 +56,7 @@
                             (get-in @backtrack-pointer [max-idx t 1 0] []))]
         (deep-aset doubles dp-table s t 1 0 max-val)
         (swap! backtrack-pointer assoc-in [s t 1 0] pointer)))
-    (reduce (fn [sent [head modifier]] (assoc-in sent [modifier :head] head))
+    (reduce (fn [sent [head modifier]]
+              (assoc-in sent [:words modifier :head] head))
             sentence
             (get-in @backtrack-pointer [0 (dec n) 1 0]))))
