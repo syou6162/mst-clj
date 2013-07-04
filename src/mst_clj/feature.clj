@@ -87,6 +87,18 @@
 ;; In Between POS Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn between-features [sentence ^long i ^long j]
+  (->> (range (inc (min i j)) (max i j))
+       (reduce
+        (fn [result mid-idx]
+          (let [i-pos (if (< (inc i) (count sentence))
+                        (.pos-tag ^Word (nth sentence i)))
+                mid-pos (.pos-tag ^Word (nth sentence mid-idx))
+                j-pos (if (< (inc j) (count sentence))
+                        (.pos-tag ^Word (nth sentence j)))]
+            (conj result (str i-pos \& mid-pos \& j-pos))))
+        [])))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Surrounding Word POS Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -106,8 +118,15 @@
 
 (def surrounding-word-pos-features
   [(def-conjunctive-feature-fn p-pos p-plus-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-pos p-plus-pos c-pos)
+
    (def-conjunctive-feature-fn p-minus-pos p-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-minus-pos p-pos c-pos)
+
    (def-conjunctive-feature-fn p-pos p-plus-pos c-pos c-plus-pos)
+   (def-conjunctive-feature-fn p-pos c-pos c-plus-pos)
+
    (def-conjunctive-feature-fn p-minus-pos p-pos c-pos c-plus-pos)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -132,11 +151,16 @@
        (reduce into [])))
 
 (defn get-fv [sentence i j]
-  (let [dir-dist-feature (direction-and-distance-feature sentence i j)]
-    (->> (map-indexed #(vector %1 %2) all-basic-features)
-         (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
-         (remove #(-> % second nil?))
-         (map (fn [[idx f]] (str dir-dist-feature \& idx \& f)))
+  (let [dir-dist-feature (direction-and-distance-feature sentence i j)
+        all-basic-features (->> (map-indexed #(vector %1 %2) all-basic-features)
+                                (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
+                                (remove #(-> % second nil?))
+                                (mapv (fn [[idx f]] (str idx \& f))))
+        bet-fv (mapv #(str "b&" %) (between-features sentence i j))]
+    (->> (into all-basic-features bet-fv)
+         (map (fn [f] [f (str dir-dist-feature \& f)]))
+         (reduce into [])
+         (cons dir-dist-feature)
          (map feature-to-id)
          (remove nil?)
          (int-array))))
