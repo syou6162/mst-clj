@@ -106,8 +106,15 @@
 
 (def surrounding-word-pos-features
   [(def-conjunctive-feature-fn p-pos p-plus-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-pos p-plus-pos c-pos)
+
    (def-conjunctive-feature-fn p-minus-pos p-pos c-minus-pos c-pos)
+   (def-conjunctive-feature-fn p-minus-pos p-pos c-pos)
+
    (def-conjunctive-feature-fn p-pos p-plus-pos c-pos c-plus-pos)
+   (def-conjunctive-feature-fn p-pos c-pos c-plus-pos)
+
    (def-conjunctive-feature-fn p-minus-pos p-pos c-pos c-plus-pos)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
