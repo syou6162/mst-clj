@@ -10,20 +10,20 @@
        (feature-to-id "c") 2
        (feature-to-id "d") 3
        (feature-to-id "a") 0
-       (get-max-feature-id) 3)
+       (get-max-feature-id) 4)
 
   (clear-feature-mapping!)
 
   (are [x y] (= x y)
        (feature-to-id "b") 0
        (feature-to-id "d") 1
-       (get-max-feature-id) 1)
+       (get-max-feature-id) 2)
 
   (save-feature-to-id "/tmp/hoge.bin")
-  (load-feature-to-id "/tmp/hoge.bin")
+  (load-feature-to-id! "/tmp/hoge.bin")
 
   (are [x y] (= x y)
        (feature-to-id "a") 2
        (feature-to-id "b") 0
        (feature-to-id "d") 1
-       (get-max-feature-id) 2))
+       (get-max-feature-id) 3))

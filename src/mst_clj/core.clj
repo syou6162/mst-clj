@@ -30,7 +30,7 @@
 
 (defn train-mode [filename max-iter model-filename feature-to-id-filename]
   (let [sentences (read-mst-format-file filename)
-        weight-dim (inc (feature/max-feature-id))]
+        weight-dim (inc (feature/get-max-feature-id))]
     (feature/save-feature-to-id feature-to-id-filename)
     (feature/clear-feature-mapping!)
     (loop [iter 0,
@@ -62,7 +62,7 @@
 
 (defn eval-mode [filename model-filename feature-to-id-filename]
   (let [_ (binding [*out* *err*] (println (str "Started reading " feature-to-id-filename)))
-        _ (time (feature/load-feature-to-id feature-to-id-filename))
+        _ (time (feature/load-feature-to-id! feature-to-id-filename))
         _ (binding [*out* *err*] (println (str "Finished reading " feature-to-id-filename)))
         weight (deserialize model-filename)
         _ (binding [*out* *err*] (println "Started reading gold sentences..."))
