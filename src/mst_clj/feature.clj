@@ -12,43 +12,44 @@
          (if (every? #(not (nil? %)) tmp#)
            (clojure.string/join \& tmp#))))))
 
-(defn normalize [^String s]
-  (cond (keyword? s) s
-        (.matches s "[0-9]+|[0-9]+\\.[0-9]+|[0-9]+[0-9,]+") "<num>"
-        :else s))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Uni-gram Features
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def unigram-feature
   [(defn p-word [sentence ^long i ^long j]
-     (normalize (.surface ^Word (nth sentence i))))
+     (.surface ^Word (nth sentence i)))
 
    (defn p-word5 [sentence i j]
-     (let [surface (p-word sentence i j)]
-       (if (and (not (keyword? surface)) (< 5 (count surface)))
-         (subs surface 0 5))))
+     (.lemma ^Word (nth sentence i)))
 
    (defn p-pos [sentence ^long i ^long j]
      (.pos-tag ^Word (nth sentence i)))
 
+   (defn p-cpos [sentence ^long i ^long j]
+     (.cpos-tag ^Word (nth sentence i)))
+
    (def-conjunctive-feature-fn p-word p-pos)
+   (def-conjunctive-feature-fn p-word p-cpos)
    (def-conjunctive-feature-fn p-word5 p-pos)
+   (def-conjunctive-feature-fn p-word5 p-cpos)
 
    (defn c-word [sentence ^long i ^long j]
-     (normalize (.surface ^Word (nth sentence j))))
+     (.surface ^Word (nth sentence j)))
 
    (defn c-word5 [sentence i j]
-     (let [surface (c-word sentence i j)]
-       (if (and (not (keyword? surface)) (< 5 (count surface)))
-         (subs surface 0 5))))
+     (.lemma ^Word (nth sentence j)))
 
    (defn c-pos [sentence ^long i ^long j]
      (.pos-tag ^Word (nth sentence j)))
 
+   (defn c-cpos [sentence ^long i ^long j]
+     (.cpos-tag ^Word (nth sentence j)))
+
    (def-conjunctive-feature-fn c-word c-pos)
-   (def-conjunctive-feature-fn c-word5 c-pos)])
+   (def-conjunctive-feature-fn c-word c-cpos)
+   (def-conjunctive-feature-fn c-word5 c-pos)
+   (def-conjunctive-feature-fn c-word5 c-cpos)])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Basic Bi-gram Features
