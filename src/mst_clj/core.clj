@@ -61,29 +61,16 @@
     (loop [iter 0,
            weight (double-array weight-dim)
            cum-weight (double-array weight-dim)]
-      (if (= iter max-iter)
-        (serialize (averaged-weight cum-weight (* iter (count sentences)))
-                   model-filename)
-        (do
-          (let [predictions (mapv #(eisner % weight) sentences)]
-            (println
-             (str iter ", "
-                  (get-dependency-accuracy sentences predictions) ", "
-                  (get-complete-accuracy sentences predictions))))
-          (let [[new-weight cum-weight] (loop [sent-idx 0, weight weight, cum-weight cum-weight]
-                                          (if (= sent-idx (count sentences))
-                                            [weight cum-weight]
-                                            (do
-                                              (binding [*out* *err*]
-                                                (print ".")
-                                                (flush))
-                                              (let [gold (nth sentences sent-idx)
-                                                    prediction (with-redefs [score-fn training-score-fn]
-                                                                 (eisner gold weight))
-                                                    new-weight (update-weight weight gold prediction)
-                                                    cum-weight (add-weight new-weight cum-weight)]
-                                                (recur (inc sent-idx) new-weight cum-weight)))))]
-            (recur (inc iter) new-weight cum-weight)))))))
+      (if (= iter (:max-iter opts))
+        (serialize (perceptron/averaged-weight cum-weight (* iter (count training-sentences)))
+                   (:model-filename opts))
+        (let [[[new-weight cum-weight] _ _] (pvalues
+                                             (update-weight weight cum-weight training-sentences)
+                                             (calc-accuracy iter weight training-sentences dev-sentences)
+                                             (-> cum-weight
+                                                 (perceptron/averaged-weight (* iter (count training-sentences)))
+                                                 (serialize (str iter "-" (:model-filename opts)))))]
+          (recur (inc iter) new-weight cum-weight))))))
 
 (defn eval-mode [opts]
   (let [_ (binding [*out* *err*] (println (str "Started reading " (:feature-to-id-filename opts))))
