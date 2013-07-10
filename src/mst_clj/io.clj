@@ -6,17 +6,15 @@
   (:require [mst-clj.sentence :as sentence])
   (:use [clojure.string :only (split)]))
 
-(def Root :root)
+(def ^:dynamic *root* "ROOT")
 
 (defn lines-to-words [lines]
   (let [[words pos-tags labels heads] (->> (split lines #"\n")
-                                           (mapv (fn [line]
-                                                   (->> (split line #"\t")
-                                                        (mapv clojure.string/lower-case)))))
+                                           (mapv #(split % #"\t")))
         words (vec (map (fn [w pos-tag idx head]
-                          (Word. w pos-tag idx head))
-                        (vec (cons Root words))
-                        (vec (cons Root pos-tags))
+                          (word/make w pos-tag idx head))
+                        (vec (cons *root* words))
+                        (vec (cons *root* pos-tags))
                         (vec (range (inc (count words))))
                         (vec (cons -1 (map
                                        #(Integer/parseInt %)
