@@ -1,24 +1,38 @@
 (ns mst-clj.io
   (:import [mst_clj.word Word])
+  (:use [mst-clj.feature :only (get-fv)])
+  (:use [clj-utils.random :only (shuffle-with-random)])
+  (:require [mst-clj.word :as word])
   (:require [mst-clj.sentence :as sentence])
   (:use [clojure.string :only (split)]))
 
-(def Root :root)
+(def ^:dynamic *root* "ROOT")
 
 (defn lines-to-words [lines]
   (let [[words pos-tags labels heads] (->> (split lines #"\n")
-                                           (mapv (fn [line]
-                                                   (->> (split line #"\t")
-                                                        (mapv clojure.string/lower-case)))))
+                                           (mapv #(split % #"\t")))
         words (vec (map (fn [w pos-tag idx head]
-                          (Word. w pos-tag idx head))
-                        (vec (cons Root words))
-                        (vec (cons Root pos-tags))
+                          (word/make w pos-tag idx head))
+                        (vec (cons *root* words))
+                        (vec (cons *root* pos-tags))
                         (vec (range (inc (count words))))
                         (vec (cons -1 (map
                                        #(Integer/parseInt %)
                                        heads)))))]
     words))
+
+(defn my-pmap
+  ([num-of-threads f coll]
+     (let [n (count coll)]
+       (->> coll
+            (partition-all (/ n num-of-threads))
+            (pmap (fn [chuck] (mapv f chuck)))
+            (reduce into []))))
+  ([f coll]
+     (my-pmap
+      (+ 2 (.. Runtime getRuntime availableProcessors))
+      f
+      coll)))
 
 (defn read-mst-format-file [filename]
   "Read correct parsed sentences from mst formal file.
@@ -35,11 +49,23 @@
    4       4       4       7       6       7       0       9       7       7       12      10"
   (binding [*out* *err*]
     (println "Creating Instances..."))
-  (->> (split (slurp filename) #"\n\n")
-       (map lines-to-words)
-       (mapv sentence/make-training-data)))
+  (let [words-vec (->> (split (slurp filename) #"\n\n")
+                       (shuffle-with-random)
+                       (map lines-to-words))]
+    (doseq [words words-vec
+            i (range 1 (count words))]
+      (let [j (.head ^Word (nth words i))]
+        (get-fv words i j)))
+    (->> words-vec
+         (my-pmap (fn [words]
+                    (binding [*out* *err*] (print ".") (flush))
+                    (sentence/make words)))
+         (into []))))
 
 (defn read-gold-sentences [filename]
   (->> (split (slurp filename) #"\n\n")
        (map lines-to-words)
-       (mapv sentence/make-test-data)))
+       (my-pmap (fn [words]
+                  (binding [*out* *err*] (print ".") (flush))
+                  (sentence/make words)))
+       (into [])))
