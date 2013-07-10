@@ -39,6 +39,19 @@
          (clojure.string/join ", ")
          (println))))
 
+(defn update-weight [weight cum-weight gold-sentences]
+  (->> gold-sentences
+       (reduce
+        (fn [[weight cum-weight] gold]
+          (let [prediction (with-redefs [perceptron/score-fn
+                                         perceptron/training-score-fn]
+                             (eisner gold weight))
+                new-weight (perceptron/update-weight weight gold prediction)
+                cum-weight (perceptron/add-weight new-weight cum-weight)]
+            (binding [*out* *err*] (print ".") (flush))
+            [weight cum-weight]))
+        [weight cum-weight])))
+
 (defn train-mode [opts]
   (let [training-sentences (read-mst-format-file (:training-filename opts))
         dev-sentences (read-gold-sentences (:dev-filename opts))
