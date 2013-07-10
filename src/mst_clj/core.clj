@@ -1,14 +1,12 @@
 (ns mst-clj.core
-  (:use [mst-clj.eisner])
-  (:use [mst-clj.word])
-  (:use [mst-clj.perceptron])
+  (:use [mst-clj.eisner :only (eisner)])
   (:use [mst-clj.io])
   (:use [mst-clj.evaluation])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
+  (:require [mst-clj.perceptron :as perceptron])
   (:use [clj-utils.core :only (split-with-ratio)])
   (:use [clj-utils.io :only (serialize deserialize)])
-  (:use [clojure.string :only (split)])
   (:gen-class))
 
 (require '[clojure.tools.cli :as cli])
