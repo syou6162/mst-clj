@@ -1,7 +1,7 @@
 (ns mst-clj.eisner
   (:import [mst_clj.sentence Sentence])
-  (:use [mst-clj.common])
-  (:use [mst-clj.perceptron]))
+  (:use [mst-clj.common :only (deep-aget deep-aset)])
+  (:use [mst-clj.perceptron :only (score-fn training-score-fn)]))
 
 (defn argmax [coll]
   "Return max val and its index"
@@ -18,7 +18,7 @@
 (defn init-dp-table [n]
   (make-array Double/TYPE n n 2 2))
 
-(defn eisner [^Sentence sentence ^doubles weight]
+(defn eisner' [score-fn ^Sentence sentence ^doubles weight]
   (let [n (count (:words sentence))
         dp-table (init-dp-table n)
         backtrack-pointer (atom {})
@@ -60,3 +60,6 @@
               (assoc-in sent [:words modifier :head] head))
             sentence
             (get-in @backtrack-pointer [0 (dec n) 1 0]))))
+
+(def eisner-for-training (partial eisner' training-score-fn))
+(def eisner (partial eisner' score-fn))

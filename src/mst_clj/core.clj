@@ -1,5 +1,5 @@
 (ns mst-clj.core
-  (:use [mst-clj.eisner :only (eisner)])
+  (:use [mst-clj.eisner :only (eisner eisner-for-training)])
   (:use [mst-clj.io])
   (:use [mst-clj.evaluation])
   (:require [mst-clj.sentence :as sentence])
@@ -43,9 +43,7 @@
   (->> gold-sentences
        (reduce
         (fn [[weight cum-weight] gold]
-          (let [prediction (with-redefs [perceptron/score-fn
-                                         perceptron/training-score-fn]
-                             (eisner gold weight))
+          (let [prediction (eisner-for-training gold weight)
                 new-weight (perceptron/update-weight weight gold prediction)
                 cum-weight (perceptron/add-weight new-weight cum-weight)]
             (binding [*out* *err*] (print ".") (flush))
