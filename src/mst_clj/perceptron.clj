@@ -31,12 +31,12 @@
 (def score-fn score-fn')
 
 (defn training-score-fn
-  "iのheadがjでない時にスコアを1かさ増しし、負例の重みがなるべく更新されるように
+  "jのheadがiでない時にスコアを1かさ増しし、負例の重みがなるべく更新されるように
   調整する関数"
   [^doubles weight ^Sentence sentence]
   (fn [i j]
     (let [score ((score-fn' weight sentence) i j)]
-      (if (= j (:head (nth (:words sentence) i)))
+      (if (= i (:head (nth (:words sentence) j)))
         score
         (inc score)))))
 

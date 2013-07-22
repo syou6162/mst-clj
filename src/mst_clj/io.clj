@@ -2,6 +2,7 @@
   (:import [mst_clj.word Word])
   (:use [mst-clj.feature :only (get-fv)])
   (:use [clj-utils.random :only (shuffle-with-random)])
+  (:use [clj-utils.time :only (easily-understandable-time)])
   (:require [mst-clj.word :as word])
   (:require [mst-clj.sentence :as sentence])
   (:use [clojure.string :only (split)]))
@@ -53,13 +54,16 @@
                        (shuffle-with-random)
                        (map lines-to-words))]
     (doseq [words words-vec
-            i (range 1 (count words))]
-      (let [j (.head ^Word (nth words i))]
+            j (range 1 (count words))]
+      (let [i (.head ^Word (nth words j))]
         (get-fv words i j)))
     (->> words-vec
-         (my-pmap (fn [words]
-                    (binding [*out* *err*] (print ".") (flush))
-                    (sentence/make words)))
+         (my-pmap
+          (fn [words]
+            (binding [*out* *err*] (print ".") (flush))
+            (println (count words))
+            (easily-understandable-time
+             (sentence/make words))))
          (into []))))
 
 (defn read-gold-sentences [filename]
