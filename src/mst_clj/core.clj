@@ -47,7 +47,7 @@
                 new-weight (perceptron/update-weight weight gold prediction)
                 cum-weight (perceptron/add-weight new-weight cum-weight)]
             (binding [*out* *err*] (print ".") (flush))
-            [weight cum-weight]))
+            [new-weight cum-weight]))
         [weight cum-weight])))
 
 (defn train-mode [opts]
