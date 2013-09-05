@@ -1,6 +1,6 @@
 # mst-clj
 
-A Clojure library designed to ... well, that part is up to you.
+1st-order MSTのClojure実装です。速度が出るわけでも精度が高いわけでもないですが、全体で1000行もない程度なのでコンパクトになっています。
 
 ## Usage
 
@@ -11,7 +11,7 @@ python bin/conllIX2mst.py ~/Desktop/CoNLL2009-ST-English-train.txt > conll2009ms
 
 ```
 
-実際に使うときには`lein run -m mst-clj.core -h`で指定できるオプションを見てみるとよい。並列していくつかのモデルを学習するときには`--model-filename`オプションや`--feature-to-id-filenam`を変更するべし。
+実際に使うときには`lein run -h`で指定できるオプションを見てみるとよい。並列していくつかのモデルを学習するときには`--model-filename`オプションや`--feature-to-id-filenam`を変更するべし。
 
 ### 学習
 
@@ -28,9 +28,10 @@ lein run --mode eval --filename conll2009mst.txt
 ## Notice
 
 - CoNLL2009のフォーマットを仮定しており、品詞情報には正解データを使用します
-- メモリを大量に食います(特に学習時)。35000文程度の学習で25GB前後
+- メモリを大量に食います(特に学習時)。35000文程度の学習で10GB前後
  - テスト時にも素性とidの変換のテーブルがメモリを食います
 - MIRAではなくstructured perceptronで構造学習を行なっている
+- k-best解は(今のところ)出力できません
 - 2単語間の間にある単語の品詞を使ったトライグラムの品詞は未実装
 - decodeは並列にやっているため、single threadで動かすともっと遅いです
 - テスト文の入力をCoNLL2009形式で吐くように...したい
@@ -51,6 +52,6 @@ lein run --mode eval --filename conll2009mst.txt
 
 ## License
 
-Copyright © 2012 Yasuhisa Yoshida
+Copyright © 2013 Yasuhisa Yoshida
 
 Distributed under the Eclipse Public License, the same as Clojure.

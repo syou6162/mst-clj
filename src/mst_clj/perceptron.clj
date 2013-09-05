@@ -30,52 +30,47 @@
 
 (def score-fn score-fn')
 
-(defn training-score-fn [^doubles weight ^Sentence sentence]
+(defn training-score-fn
+  "jのheadがiでない時にスコアを1かさ増しし、負例の重みがなるべく更新されるように
+  調整する関数"
+  [^doubles weight ^Sentence sentence]
   (fn [i j]
     (let [score ((score-fn' weight sentence) i j)]
       (if (= i (:head (nth (:words sentence) j)))
         score
         (inc score)))))
 
-(defn nil-safe-adder [base add] (if (nil? base) add (+ base add)))
-
-(defn fv2hash-map
-  "同一のkeyを持ちうるfvに対し、keyでmerge(足してmerge)した結果をhash-mapで返す関数"
-  [fv]
-  (reduce
-   (fn [result [k v]]
-     (update-in result [k] nil-safe-adder v))
-   {} fv))
-
-(defn fv-merged-by-idx [fv]
-  (->> (fv2hash-map fv)
-       (reduce
-        (fn [result [k v]]
-          (if (zero? v)
-            result
-            (conj result [k v])))
-        [])))
-
-(defn fv-diff [gold-fv prediction-fv]
-  (->> prediction-fv
-       (mapv (fn [[k v]] [k (- v)]))
-       (concat gold-fv)
-       (fv2hash-map)
-       (fv-merged-by-idx)))
-
-(defn concat-edge-fvs [^Sentence sent]
-  (let [edge-fvs (:edge-fvs sent)]
-    (->> (rest (:words sent))
-         (mapv (fn [w] [(:idx w) (:head w)]))
-         (reduce
-          (fn [result [modifier head]]
-            (into result (vec (get-in edge-fvs [head modifier]))))
-          [])
-         (mapv #(vector %1 1.0)))))
+(defn fv-diff
+  "goldとpredictの素性ベクトルの差を計算する。結果はhash-mapで返す"
+  [gold prediction]
+  (let [init-m (transient {})
+        next-m (reduce
+                (fn [result ^Word w]
+                  (let [modifier (:idx w)
+                        head (:head w)
+                        fv-array (get-in (:edge-fvs gold) [head modifier])]
+                    (areduce ^ints fv-array idx ret result
+                             (let [fv-idx (aget ^ints fv-array idx)
+                                   v (get ret fv-idx 0)]
+                               (assoc! ret fv-idx (inc v))))))
+                init-m
+                (rest (:words gold)))]
+    (->> (reduce
+          (fn [result ^Word w]
+            (let [modifier (:idx w)
+                  head (:head w)
+                  fv-array (get-in (:edge-fvs prediction) [head modifier])]
+              (areduce ^ints fv-array idx ret result
+                       (let [fv-idx (aget ^ints fv-array idx)
+                             v (get ret fv-idx 0)]
+                         (assoc! ret fv-idx (dec v))))))
+          next-m
+          (rest (:words prediction)))
+         (persistent!))))
 
 (defn step-size-fn [^doubles weight ^Sentence gold ^Sentence prediction]
   (let [num-errors (error-count gold prediction)
-        fv-diff (fv-diff (concat-edge-fvs gold) (concat-edge-fvs prediction))
+        fv-diff (fv-diff gold prediction)
         in-prod (innter-product weight fv-diff)
         n (norm fv-diff)
         step-size (if (zero? n)
@@ -94,7 +89,7 @@
          (map #(:head ^Word %) (:words prediction)))
     weight
     (let [step-size-fn (step-size-fn weight gold prediction)]
-      (->> (fv-diff (concat-edge-fvs gold) (concat-edge-fvs prediction))
+      (->> (fv-diff gold prediction)
            (map (fn [[k v]] [k (step-size-fn v)]))
            (reduce (fn [^doubles result [fv-idx v]]
                      (aset ^doubles result

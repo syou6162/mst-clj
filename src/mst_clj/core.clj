@@ -1,14 +1,12 @@
 (ns mst-clj.core
-  (:use [mst-clj.eisner])
-  (:use [mst-clj.word])
-  (:use [mst-clj.perceptron])
+  (:use [mst-clj.eisner :only (eisner eisner-for-training)])
   (:use [mst-clj.io])
   (:use [mst-clj.evaluation])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
+  (:require [mst-clj.perceptron :as perceptron])
   (:use [clj-utils.core :only (split-with-ratio)])
   (:use [clj-utils.io :only (serialize deserialize)])
-  (:use [clojure.string :only (split)])
   (:gen-class))
 
 (require '[clojure.tools.cli :as cli])
@@ -16,8 +14,10 @@
 (defn- get-cli-opts [args]
   (cli/cli args
            ["-h" "--help" "Show help" :default false :flag true]
-           ["--mode" "(train|test|eval)"]
-           ["--filename" "File name for (training|test|eval)" :default "/Users/yasuhisa/Desktop/simple_shift_reduce_parsing/wsj_02_21_mst.txt"]
+           ["--mode" "(training|test|eval)"]
+           ["--training-filename" "File name for training" :default "train.txt"]
+           ["--dev-filename" "File name for dev" :default "dev.txt"]
+           ["--test-filename" "File name for test" :default "test.txt"]
            ["--model-filename" "File name of the (saved|load) model" :default "parsing.model"]
            ["--max-iter" "Number of maximum iterations" :default 10 :parse-fn #(Integer. %)]
            ["--feature-to-id-filename" "File name of the feature2id mapping" :default "feature-to-id.bin"]))
@@ -28,45 +28,55 @@
                        (flush))
                      (eisner sentence weight))))
 
-(defn train-mode [filename max-iter model-filename feature-to-id-filename]
-  (let [sentences (read-mst-format-file filename)
+(defn calc-accuracy [iter weight training-sentences dev-sentences]
+  (let [training-predictions (map #(eisner % weight) training-sentences)
+        dev-predictions (map #(eisner % weight) dev-sentences)]
+    (->> [iter
+          (get-dependency-accuracy training-sentences training-predictions)
+          (get-complete-accuracy training-sentences training-predictions)
+          (get-dependency-accuracy dev-sentences dev-predictions)
+          (get-complete-accuracy dev-sentences dev-predictions)]
+         (clojure.string/join ", ")
+         (println))))
+
+(defn update-weight [weight cum-weight gold-sentences]
+  (->> gold-sentences
+       (reduce
+        (fn [[weight cum-weight] gold]
+          (let [prediction (eisner-for-training gold weight)
+                new-weight (perceptron/update-weight weight gold prediction)
+                cum-weight (perceptron/add-weight new-weight cum-weight)]
+            (binding [*out* *err*] (print ".") (flush))
+            [new-weight cum-weight]))
+        [weight cum-weight])))
+
+(defn train-mode [opts]
+  (let [training-sentences (read-mst-format-file (:training-filename opts))
+        dev-sentences (read-gold-sentences (:dev-filename opts))
         weight-dim (inc (feature/get-max-feature-id))]
-    (feature/save-feature-to-id feature-to-id-filename)
+    (feature/save-feature-to-id (:feature-to-id-filename opts))
     (feature/clear-feature-mapping!)
     (loop [iter 0,
            weight (double-array weight-dim)
            cum-weight (double-array weight-dim)]
-      (if (= iter max-iter)
-        (serialize (averaged-weight cum-weight (* iter (count sentences)))
-                   model-filename)
-        (do
-          (let [predictions (mapv #(eisner % weight) sentences)]
-            (println
-             (str iter ", "
-                  (get-dependency-accuracy sentences predictions) ", "
-                  (get-complete-accuracy sentences predictions))))
-          (let [[new-weight cum-weight] (loop [sent-idx 0, weight weight, cum-weight cum-weight]
-                                          (if (= sent-idx (count sentences))
-                                            [weight cum-weight]
-                                            (do
-                                              (binding [*out* *err*]
-                                                (print ".")
-                                                (flush))
-                                              (let [gold (nth sentences sent-idx)
-                                                    prediction (with-redefs [score-fn training-score-fn]
-                                                                 (eisner gold weight))
-                                                    new-weight (update-weight weight gold prediction)
-                                                    cum-weight (add-weight new-weight cum-weight)]
-                                                (recur (inc sent-idx) new-weight cum-weight)))))]
-            (recur (inc iter) new-weight cum-weight)))))))
+      (if (= iter (:max-iter opts))
+        (serialize (perceptron/averaged-weight cum-weight (* iter (count training-sentences)))
+                   (:model-filename opts))
+        (let [[[new-weight cum-weight] _ _] (pvalues
+                                             (update-weight weight cum-weight training-sentences)
+                                             (calc-accuracy iter weight training-sentences dev-sentences)
+                                             (-> cum-weight
+                                                 (perceptron/averaged-weight (* iter (count training-sentences)))
+                                                 (serialize (str iter "-" (:model-filename opts)))))]
+          (recur (inc iter) new-weight cum-weight))))))
 
-(defn eval-mode [filename model-filename feature-to-id-filename]
-  (let [_ (binding [*out* *err*] (println (str "Started reading " feature-to-id-filename)))
-        _ (time (feature/load-feature-to-id! feature-to-id-filename))
-        _ (binding [*out* *err*] (println (str "Finished reading " feature-to-id-filename)))
-        weight (deserialize model-filename)
+(defn eval-mode [opts]
+  (let [_ (binding [*out* *err*] (println (str "Started reading " (:feature-to-id-filename opts))))
+        _ (time (feature/load-feature-to-id! (:feature-to-id-filename opts)))
+        _ (binding [*out* *err*] (println (str "Finished reading " (:feature-to-id-filename opts))))
+        weight (deserialize (:model-filename opts))
         _ (binding [*out* *err*] (println "Started reading gold sentences..."))
-        golds (read-gold-sentences filename)
+        golds (read-gold-sentences (:test-filename opts))
         _ (binding [*out* *err*] (println "Finished reading gold sentences..."))
         parse (parse-fn weight)
         predictions (mapv parse golds)]
@@ -80,8 +90,7 @@
     (when (:help options)
       (println banner)
       (System/exit 0))
-    (cond (= "train" (:mode options)) (train-mode (:filename options) (:max-iter options)
-                                                  (:model-filename options) (:feature-to-id-filename options))
-          (= "eval" (:mode options)) (eval-mode (:filename options) (:model-filename options) (:feature-to-id-filename options))
+    (cond (= "training" (:mode options)) (train-mode options)
+          (= "eval" (:mode options)) (eval-mode options)
           :else nil))
   (shutdown-agents))
