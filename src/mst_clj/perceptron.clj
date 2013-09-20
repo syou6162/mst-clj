@@ -84,3 +84,8 @@
                    weight)))))
 
 
+(defn get-averaged-weight
+  "w = w_final - w_a / t"
+  [cum-count ^doubles weight ^doubles cum-weight]
+  (amap weight idx ret
+        (+ (aget weight idx) (/ (aget cum-weight idx) cum-count))))
