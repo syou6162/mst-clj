@@ -53,9 +53,9 @@
           (rest (:words prediction)))
          (persistent!))))
 
-(defn get-step-size [^doubles weight ^Sentence gold ^Sentence prediction]
+(defn get-step-size
+  [^doubles weight ^Sentence gold ^Sentence prediction fv-diff]
   (let [num-errors (error-count gold prediction)
-        fv-diff (fv-diff gold prediction)
         in-prod (innter-product weight fv-diff)
         n (norm fv-diff)
         step-size (if (zero? n)
