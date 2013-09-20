@@ -6,7 +6,7 @@
   (:import [mst_clj.sentence Sentence]))
 
 (def ^:dynamic *number-of-mini-batches* 24)
-(def ^:dynamic *number-of-threads* 4)
+(def ^:dynamic *number-of-threads* (min 4 *number-of-mini-batches*))
 
 (defn minibatch-update-weight
   [iter ^doubles init-weight ^doubles init-cum-weight gold-sentences]
