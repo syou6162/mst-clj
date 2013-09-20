@@ -25,7 +25,7 @@
 (defn completely-correct? [^Sentence gold ^Sentence prediction]
   (zero? (error-count gold prediction)))
 
-(defn fv-diff
+(defn get-fv-diff
   "goldとpredictの素性ベクトルの差を計算する。結果はhash-mapで返す"
   [^Sentence gold ^Sentence prediction]
   (let [init-m (transient {})
