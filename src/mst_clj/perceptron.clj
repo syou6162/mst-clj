@@ -27,7 +27,7 @@
 
 (defn fv-diff
   "goldとpredictの素性ベクトルの差を計算する。結果はhash-mapで返す"
-  [gold prediction]
+  [^Sentence gold ^Sentence prediction]
   (let [init-m (transient {})
         next-m (reduce
                 (fn [result ^Word w]
