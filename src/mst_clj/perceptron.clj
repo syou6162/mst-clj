@@ -83,16 +83,4 @@
                      result)
                    weight)))))
 
-(defn averaged-weight
-  ([^doubles weight cum-count]
-     (if (zero? cum-count)
-       weight
-       (amap weight i ret
-             (/ (aget weight i) cum-count))))
-  ([^doubles weight iter n]
-     (averaged-weight weight (* iter n))))
 
-(defn add-weight [^doubles w1 ^doubles w2]
-  (assert (= (count w1) (count w2)))
-  (amap w1 idx ret
-        (+ (aget w1 idx) (aget w2 idx))))
