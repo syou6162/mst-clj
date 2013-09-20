@@ -1,5 +1,6 @@
 (ns mst-clj.core
   (:use [mst-clj.eisner :only (eisner eisner-for-training)])
+  (:use [mst-clj.minibatch :only (minibatch-update-weight)])
   (:use [mst-clj.io])
   (:use [mst-clj.evaluation])
   (:require [mst-clj.sentence :as sentence])
@@ -15,6 +16,7 @@
   (cli/cli args
            ["-h" "--help" "Show help" :default false :flag true]
            ["--mode" "(training|test|eval)"]
+           ["--mini-batch" "Use mini-batch to parallel training data" :default false :flag true]
            ["--training-filename" "File name for training" :default "train.txt"]
            ["--dev-filename" "File name for dev" :default "dev.txt"]
            ["--test-filename" "File name for test" :default "test.txt"]
@@ -63,7 +65,8 @@
         (serialize (perceptron/averaged-weight cum-weight (* iter (count training-sentences)))
                    (:model-filename opts))
         (let [[[new-weight cum-weight] _ _] (pvalues
-                                             (update-weight weight cum-weight training-sentences)
+                                             ((if (:mini-batch opts) minibatch-update-weight update-weight)
+                                              weight cum-weight training-sentences)
                                              (calc-accuracy iter weight training-sentences dev-sentences)
                                              (-> cum-weight
                                                  (perceptron/averaged-weight (* iter (count training-sentences)))
