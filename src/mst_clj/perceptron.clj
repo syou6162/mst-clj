@@ -1,4 +1,5 @@
 (ns mst-clj.perceptron
+  (:use [mst-clj.eisner :only (eisner-for-training)])
   (:import [mst_clj.word Word])
   (:import [mst_clj.sentence Sentence]))
 
@@ -21,24 +22,6 @@
                  (not= (:head x) (:head y))))
        (count)))
 
-(defn score-fn' [^doubles weight ^Sentence sentence]
-  (fn [i j]
-    (let [fv (get-in sentence [:edge-fvs i j])]
-      (areduce ^ints fv idx result (double 0.0)
-               (+ result (aget weight
-                               (aget ^ints fv idx)))))))
-
-(def score-fn score-fn')
-
-(defn training-score-fn
-  "jのheadがiでない時にスコアを1かさ増しし、負例の重みがなるべく更新されるように
-  調整する関数"
-  [^doubles weight ^Sentence sentence]
-  (fn [i j]
-    (let [score ((score-fn' weight sentence) i j)]
-      (if (= i (:head (nth (:words sentence) j)))
-        score
-        (inc score)))))
 
 (defn fv-diff
   "goldとpredictの素性ベクトルの差を計算する。結果はhash-mapで返す"
