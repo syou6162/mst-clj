@@ -53,7 +53,7 @@
           (rest (:words prediction)))
          (persistent!))))
 
-(defn step-size-fn [^doubles weight ^Sentence gold ^Sentence prediction]
+(defn get-step-size [^doubles weight ^Sentence gold ^Sentence prediction]
   (let [num-errors (error-count gold prediction)
         fv-diff (fv-diff gold prediction)
         in-prod (innter-product weight fv-diff)
@@ -65,7 +65,7 @@
                     0.0
                     (->> (/ (- num-errors in-prod) n)
                          (max 0.0)))]
-    (fn [x] (* x step-size))))
+    step-size))
 
 (defn update-weight
   "w = w + (phi(x_i, y_i) - phi(x_i, hat{y_i}))"
