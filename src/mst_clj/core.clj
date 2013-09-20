@@ -30,17 +30,6 @@
                        (flush))
                      (eisner sentence weight))))
 
-(defn calc-accuracy [iter weight training-sentences dev-sentences]
-  (let [training-predictions (map #(eisner % weight) training-sentences)
-        dev-predictions (map #(eisner % weight) dev-sentences)]
-    (->> [iter
-          (get-dependency-accuracy training-sentences training-predictions)
-          (get-complete-accuracy training-sentences training-predictions)
-          (get-dependency-accuracy dev-sentences dev-predictions)
-          (get-complete-accuracy dev-sentences dev-predictions)]
-         (clojure.string/join ", ")
-         (println))))
-
 (defn train-mode [opts]
   (let [training-sentences (read-mst-format-file (:training-filename opts))
         dev-sentences (read-gold-sentences (:dev-filename opts))
