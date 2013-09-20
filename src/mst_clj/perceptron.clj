@@ -22,6 +22,8 @@
                  (not= (:head x) (:head y))))
        (count)))
 
+(defn completely-correct? [^Sentence gold ^Sentence prediction]
+  (zero? (error-count gold prediction)))
 
 (defn fv-diff
   "goldとpredictの素性ベクトルの差を計算する。結果はhash-mapで返す"
