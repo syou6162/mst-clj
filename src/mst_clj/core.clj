@@ -1,5 +1,5 @@
 (ns mst-clj.core
-  (:use [mst-clj.eisner :only (eisner eisner-for-training)])
+  (:use [mst-clj.eisner :only (eisner)])
   (:use [mst-clj.minibatch :only (minibatch-update-weight)])
   (:use [mst-clj.io])
   (:use [mst-clj.evaluation])
