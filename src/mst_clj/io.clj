@@ -12,14 +12,15 @@
 (defn lines-to-words [lines]
   (let [[words pos-tags labels heads] (->> (split lines #"\n")
                                            (mapv #(split % #"\t")))
-        words (vec (map (fn [w pos-tag idx head]
-                          (word/make w pos-tag idx head))
+        words (vec (map (fn [w pos-tag idx head label]
+                          (word/make w pos-tag idx head label))
                         (vec (cons *root* words))
                         (vec (cons *root* pos-tags))
                         (vec (range (inc (count words))))
                         (vec (cons -1 (map
                                        #(Integer/parseInt %)
-                                       heads)))))]
+                                       heads)))
+                        (vec (cons *root* labels))))]
     words))
 
 (defn my-pmap
