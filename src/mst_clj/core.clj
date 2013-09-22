@@ -7,6 +7,7 @@
          :only (get-dependency-accuracy get-complete-accuracy)])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
+  (:use [clj-utils.time :only (easily-understandable-time)])
   (:use [clj-utils.io :only (serialize deserialize)])
   (:gen-class))
 
@@ -54,11 +55,11 @@
         _ (time (feature/load-feature-to-id! (:feature-to-id-filename opts)))
         _ (binding [*out* *err*] (println (str "Finished reading " (:feature-to-id-filename opts))))
         weight (deserialize (:model-filename opts))
-        _ (binding [*out* *err*] (println "Started reading gold sentences..."))
-        golds (read-gold-sentences (:test-filename opts))
-        _ (binding [*out* *err*] (println "Finished reading gold sentences..."))
         parse (parse-fn weight)
-        predictions (mapv parse golds)]
+        [golds predictions] (easily-understandable-time
+                             (let [golds (read-gold-sentences (:test-filename opts))
+                                   predictions (mapv parse golds)]
+                               [golds predictions]))]
     (binding [*out* *err*]
       (println "\nNumber of features: " (count weight))
       (println (get-dependency-accuracy golds predictions))
