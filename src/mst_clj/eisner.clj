@@ -1,7 +1,6 @@
 (ns mst-clj.eisner
   (:import [mst_clj.sentence Sentence])
-  (:use [mst-clj.common :only (deep-aget deep-aset)])
-  (:use [mst-clj.perceptron :only (score-fn training-score-fn)]))
+  (:use [mst-clj.common :only (deep-aget deep-aset)]))
 
 (defn argmax [coll]
   "Return max val and its index"
@@ -60,6 +59,25 @@
               (assoc-in sent [:words modifier :head] head))
             sentence
             (get-in @backtrack-pointer [0 (dec n) 1 0]))))
+
+(defn score-fn' [^doubles weight ^Sentence sentence]
+  (fn [i j]
+    (let [fv (get-in sentence [:edge-fvs i j])]
+      (areduce ^ints fv idx result (double 0.0)
+               (+ result (aget weight
+                               (aget ^ints fv idx)))))))
+
+(def score-fn score-fn')
+
+(defn training-score-fn
+  "jのheadがiでない時にスコアを1かさ増しし、負例の重みがなるべく更新されるように
+  調整する関数"
+  [^doubles weight ^Sentence sentence]
+  (fn [i j]
+    (let [score ((score-fn' weight sentence) i j)]
+      (if (= i (:head (nth (:words sentence) j)))
+        score
+        (inc score)))))
 
 (def eisner-for-training (partial eisner' training-score-fn))
 (def eisner (partial eisner' score-fn))
