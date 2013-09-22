@@ -32,24 +32,22 @@
 
 (defn train-mode [opts]
   (let [training-sentences (read-mst-format-file (:training-filename opts))
+        n (count training-sentences)
         dev-sentences (read-gold-sentences (:dev-filename opts))
-        weight-dim (inc (feature/get-max-feature-id))]
+        weight-dim (inc (feature/get-max-feature-id))
+        weight (double-array weight-dim)
+        cum-weight (double-array weight-dim)]
     (feature/save-feature-to-id (:feature-to-id-filename opts))
     (feature/clear-feature-mapping!)
-    (loop [iter 0,
-           weight (double-array weight-dim)
-           cum-weight (double-array weight-dim)]
-      (if (= iter (:max-iter opts))
-        (serialize (perceptron/averaged-weight cum-weight (* iter (count training-sentences)))
-                   (:model-filename opts))
-        (let [[[new-weight cum-weight] _ _] (pvalues
-                                             ((if (:mini-batch opts) minibatch-update-weight update-weight)
-                                              weight cum-weight training-sentences)
-                                             (calc-accuracy iter weight training-sentences dev-sentences)
-                                             (-> cum-weight
-                                                 (perceptron/averaged-weight (* iter (count training-sentences)))
-                                                 (serialize (str iter "-" (:model-filename opts)))))]
-          (recur (inc iter) new-weight cum-weight))))))
+
+    (doseq [iter (range 1 (inc (:max-iter opts)))]
+      ((if (:mini-batch opts) minibatch-update-weight update-weight)
+       iter weight cum-weight training-sentences)
+      (serialize (get-averaged-weight (* iter n) weight cum-weight)
+                 (str iter "-" (:model-filename opts))))
+
+    (serialize (get-averaged-weight (* (:max-iter opts) n) weight cum-weight)
+               (:model-filename opts))))
 
 (defn eval-mode [opts]
   (let [_ (binding [*out* *err*] (println (str "Started reading " (:feature-to-id-filename opts))))
