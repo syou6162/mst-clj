@@ -7,7 +7,6 @@
          :only (get-dependency-accuracy get-complete-accuracy)])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
-  (:use [clj-utils.core :only (split-with-ratio)])
   (:use [clj-utils.io :only (serialize deserialize)])
   (:gen-class))
 
