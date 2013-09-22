@@ -1,12 +1,12 @@
 (ns mst-clj.core
   (:use [mst-clj.eisner :only (eisner)])
+  (:use [mst-clj.perceptron :only (update-weight get-averaged-weight)])
   (:use [mst-clj.minibatch :only (minibatch-update-weight)])
   (:use [mst-clj.io :only (read-mst-format-file read-gold-sentences)])
   (:use [mst-clj.evaluation
          :only (get-dependency-accuracy get-complete-accuracy)])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
-  (:require [mst-clj.perceptron :as perceptron])
   (:use [clj-utils.core :only (split-with-ratio)])
   (:use [clj-utils.io :only (serialize deserialize)])
   (:gen-class))
