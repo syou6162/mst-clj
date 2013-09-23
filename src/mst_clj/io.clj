@@ -1,6 +1,7 @@
 (ns mst-clj.io
   (:import [mst_clj.word Word])
-  (:use [mst-clj.feature :only (get-fv)])
+  ;(:use [mst-clj.feature :only (get-fv)])
+  (:use [mst-clj.label :only (get-labeled-fv)])
   (:use [clj-utils.random :only (shuffle-with-random)])
   (:use [clj-utils.time :only (easily-understandable-time)])
   (:require [mst-clj.word :as word])
@@ -56,8 +57,9 @@
                        (map lines-to-words))]
     (doseq [words words-vec
             j (range 1 (count words))]
-      (let [i (.head ^Word (nth words j))]
-        (get-fv words i j)))
+      (let [i (.head ^Word (nth words j))
+            label (:label (nth words j))]
+        (get-labeled-fv i label j)))
     (->> words-vec
          (my-pmap
           (fn [words]
