@@ -32,8 +32,9 @@
         next-m (reduce
                 (fn [result ^Word w]
                   (let [modifier (:idx w)
+                        label (:label w)
                         head (:head w)
-                        fv-array (get-in (:edge-fvs gold) [head modifier])]
+                        fv-array (get-in (:edge-fvs gold) [head label modifier])]
                     (areduce ^ints fv-array idx ret result
                              (let [fv-idx (aget ^ints fv-array idx)
                                    v (get ret fv-idx 0)]
@@ -43,8 +44,9 @@
     (->> (reduce
           (fn [result ^Word w]
             (let [modifier (:idx w)
+                  label (:label w)
                   head (:head w)
-                  fv-array (get-in (:edge-fvs prediction) [head modifier])]
+                  fv-array (get-in (:edge-fvs prediction) [head label modifier])]
               (areduce ^ints fv-array idx ret result
                        (let [fv-idx (aget ^ints fv-array idx)
                              v (get ret fv-idx 0)]
