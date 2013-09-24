@@ -1,5 +1,6 @@
 (ns mst-clj.eisner
   (:import [mst_clj.sentence Sentence])
+  (:use [mst-clj.label :only (label-to-id-mapping)])
   (:use [mst-clj.common :only (deep-aget deep-aset)]))
 
 (defn argmax [coll]
@@ -17,11 +18,11 @@
 (defn init-dp-table [n]
   (make-array Double/TYPE n n 2 2))
 
-(defn eisner' [score-fn ^Sentence sentence ^doubles weight]
+(defn eisner' [argmax-score-label-fn ^Sentence sentence ^doubles weight]
   (let [n (count (:words sentence))
         dp-table (init-dp-table n)
         backtrack-pointer (atom {})
-        S (score-fn weight sentence)]
+        S (argmax-score-label-fn weight sentence)]
     (doseq [m (range 1 n), s (range n), :let [t (+ s m)], :while (< t n)]
       ;; incomplete-span
       (let [[max-idx max-val] (argmax (map (fn [q] [q (+ (deep-aget doubles dp-table s q 1 0)
@@ -29,7 +30,7 @@
                                            (range s t)))
             pointer (concat (get-in @backtrack-pointer [s max-idx 1 0] [])
                             (get-in @backtrack-pointer [(inc max-idx) t 0 0] []))]
-        (deep-aset doubles dp-table s t 0 1 (+ (S t s) max-val))
+        (deep-aset doubles dp-table s t 0 1 (+ (second (S t s)) max-val))
         (swap! backtrack-pointer assoc-in [s t 0 1] (conj pointer [t s])))
       
       (let [[max-idx max-val] (argmax (map (fn [q] [q (+ (deep-aget doubles dp-table s q 1 0)
@@ -37,7 +38,7 @@
                                            (range s t)))
             pointer (concat (get-in @backtrack-pointer [s max-idx 1 0] [])
                             (get-in @backtrack-pointer [(inc max-idx) t 0 0] []))]
-        (deep-aset doubles dp-table s t 1 1 (+ (S s t) max-val))
+        (deep-aset doubles dp-table s t 1 1 (+ (second (S s t)) max-val))
         (swap! backtrack-pointer assoc-in [s t 1 1] (conj pointer [s t])))
       ;; complete-span
       (let [[max-idx max-val] (argmax (map (fn [q] [q (+ (deep-aget doubles dp-table s q 0 0)
@@ -56,28 +57,37 @@
         (deep-aset doubles dp-table s t 1 0 max-val)
         (swap! backtrack-pointer assoc-in [s t 1 0] pointer)))
     (reduce (fn [sent [head modifier]]
-              (assoc-in sent [:words modifier :head] head))
+              (let [label (first (S head modifier))]
+                (-> sent
+                    (assoc-in  [:words modifier :head] head)
+                    (assoc-in  [:words modifier :label] label))))
             sentence
             (get-in @backtrack-pointer [0 (dec n) 1 0]))))
 
-(defn score-fn' [^doubles weight ^Sentence sentence]
+(defn score-label-pairs [^doubles weight ^Sentence sentence i j]
+  (->> (label-to-id-mapping)
+       (map (fn [[label idx]]
+              (if-let [fv (-> sentence :edge-fvs (get-in [i label j]))]
+                [label
+                 (areduce
+                  ^ints fv idx ret (double 0.0)
+                  (+ ret (aget weight (aget ^ints fv idx))))])))
+       (remove nil?)
+       (vec)))
+
+(defn argmax-score-label-fn [^doubles weight ^Sentence sentence]
   (fn [i j]
-    (let [fv (get-in sentence [:edge-fvs i j])]
-      (areduce ^ints fv idx result (double 0.0)
-               (+ result (aget weight
-                               (aget ^ints fv idx)))))))
+    (->> (score-label-pairs weight sentence i j)
+         (argmax))))
 
-(def score-fn score-fn')
-
-(defn training-score-fn
-  "jのheadがiでない時にスコアを1かさ増しし、負例の重みがなるべく更新されるように
-  調整する関数"
-  [^doubles weight ^Sentence sentence]
+(defn training-argmax-score-label-fn [^doubles weight ^Sentence sentence]
   (fn [i j]
-    (let [score ((score-fn' weight sentence) i j)]
-      (if (= i (:head (nth (:words sentence) j)))
-        score
-        (inc score)))))
+    (->> (score-label-pairs weight sentence i j)
+         (mapv (fn [[label score]]
+                 (if (= i (:head-idx (nth (:words sentence) j)))
+                   [label score]
+                   [label (inc score)])))
+         (argmax))))
 
-(def eisner-for-training (partial eisner' training-score-fn))
-(def eisner (partial eisner' score-fn))
+(def eisner-for-training (partial eisner' training-argmax-score-label-fn))
+(def eisner (partial eisner' argmax-score-label-fn))
