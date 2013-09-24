@@ -18,7 +18,7 @@
 (defn init-dp-table [n]
   (make-array Double/TYPE n n 2 2))
 
-(defn eisner' [argmax-score-label-fn ^Sentence sentence ^doubles weight]
+(defn eisner' [argmax-score-label-fn ^doubles weight ^Sentence sentence]
   (let [n (count (:words sentence))
         dp-table (init-dp-table n)
         backtrack-pointer (atom {})

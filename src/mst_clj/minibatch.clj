@@ -15,7 +15,7 @@
                     (my-pmap
                      *number-of-threads*
                      (fn [[idx gold]]
-                       (let [prediction (eisner-for-training gold weight)
+                       (let [prediction (eisner-for-training weight gold)
                              fv-diff (get-fv-diff gold prediction)]
                          [idx gold prediction fv-diff]))))
         predictions (mapv #(nth % 2) result)]

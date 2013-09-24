@@ -25,11 +25,7 @@
            ["--max-iter" "Number of maximum iterations" :default 10 :parse-fn #(Integer. %)]
            ["--feature-to-id-filename" "File name of the feature2id mapping" :default "feature-to-id.bin"]))
 
-(defn parse-fn [weight]
-  (fn [sentence] (do (binding [*out* *err*]
-                       (print ".")
-                       (flush))
-                     (eisner sentence weight))))
+(defn make-decoder [weight] (partial eisner weight))
 
 (defn train-mode [opts]
   (let [training-sentences (read-mst-format-file (:training-filename opts))
@@ -55,10 +51,10 @@
         _ (time (feature/load-feature-to-id! (:feature-to-id-filename opts)))
         _ (binding [*out* *err*] (println (str "Finished reading " (:feature-to-id-filename opts))))
         weight (deserialize (:model-filename opts))
-        parse (parse-fn weight)
+        decode (make-decoder weight)
         [golds predictions] (easily-understandable-time
                              (let [golds (read-gold-sentences (:test-filename opts))
-                                   predictions (mapv parse golds)]
+                                   predictions (mapv decode golds)]
                                [golds predictions]))]
     (binding [*out* *err*]
       (println "\nNumber of features: " (count weight))
