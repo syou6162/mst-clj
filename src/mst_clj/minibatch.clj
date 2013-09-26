@@ -3,7 +3,9 @@
   (:use [mst-clj.eisner :only (eisner-for-training)])
   (:use [mst-clj.perceptron
          :only (get-fv-diff get-step-size update-weight! completely-correct?)])
-  (:use [mst-clj.evaluation :only (get-dependency-accuracy get-complete-accuracy)])
+  (:use [mst-clj.evaluation
+         :only (get-dependency-accuracy get-labeled-dependency-accuracy
+                get-complete-accuracy get-labeled-complete-accuracy)])
   (:import [mst_clj.word Word])
   (:import [mst_clj.sentence Sentence]))
 
@@ -45,6 +47,8 @@
             (update-weight! cum-weight diff number-of-cum-examples)))))
     (->> [iter
           (get-dependency-accuracy gold-sentences @predicts)
-          (get-complete-accuracy gold-sentences @predicts)]
+          (get-complete-accuracy gold-sentences @predicts)
+          (get-labeled-dependency-accuracy gold-sentences @predicts)
+          (get-labeled-complete-accuracy gold-sentences @predicts)]
          (clojure.string/join ", ")
        (println))))
