@@ -18,8 +18,7 @@
 
 (defn error-count [^Sentence gold ^Sentence prediction]
   (->> (map vector (rest (:words gold)) (rest (:words prediction)))
-       (filter (fn [[x y]]
-                 (not= (:head x) (:head y))))
+       (filter (fn [[^Word x ^Word y]] (not= (:head x) (:head y))))
        (count)))
 
 (defn completely-correct? [^Sentence gold ^Sentence prediction]

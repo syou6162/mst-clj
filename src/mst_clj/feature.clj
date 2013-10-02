@@ -20,7 +20,7 @@
   [(defn p-word [sentence ^long i ^long j]
      (.surface ^Word (nth sentence i)))
 
-   (defn p-word5 [sentence i j]
+   (defn p-word5 [sentence ^long i ^long j]
      (.lemma ^Word (nth sentence i)))
 
    (defn p-pos [sentence ^long i ^long j]
@@ -37,7 +37,7 @@
    (defn c-word [sentence ^long i ^long j]
      (.surface ^Word (nth sentence j)))
 
-   (defn c-word5 [sentence i j]
+   (defn c-word5 [sentence ^long i ^long j]
      (.lemma ^Word (nth sentence j)))
 
    (defn c-pos [sentence ^long i ^long j]
