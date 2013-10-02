@@ -1,12 +1,12 @@
 (ns mst-clj.io
-  (:import [mst_clj.word Word])
-  ;(:use [mst-clj.feature :only (get-fv)])
-  (:use [mst-clj.label :only (get-labeled-fv)])
+  (:use [mst-clj.label :only (get-labeled-fv label-to-id)])
   (:use [clj-utils.random :only (shuffle-with-random)])
   (:use [clj-utils.time :only (easily-understandable-time)])
+  (:use [clojure.string :only (split)])
   (:require [mst-clj.word :as word])
   (:require [mst-clj.sentence :as sentence])
-  (:use [clojure.string :only (split)]))
+  (:import [mst_clj.word Word])
+  (:import [mst_clj.sentence Sentence]))
 
 (def root-surface "ROOT-SURFACE")
 (def root-pos-tag "ROOT-POS-TAG")
@@ -59,22 +59,21 @@
                        (map lines-to-words))]
     (doseq [words words-vec
             j (range 1 (count words))]
-      (let [i (.head ^Word (nth words j))
-            label (:label (nth words j))]
-        (get-labeled-fv i label j)))
+      (let [^Word w (nth words j), i (.head w), label (.label w)]
+        (label-to-id label)
+        (get-labeled-fv words i label j)))
     (->> words-vec
          (my-pmap
           (fn [words]
             (binding [*out* *err*] (print ".") (flush))
-            (println (count words))
-            (easily-understandable-time
-             (sentence/make words))))
+            (sentence/make words)))
          (into []))))
 
 (defn read-gold-sentences [filename]
   (->> (split (slurp filename) #"\n\n")
        (map lines-to-words)
-       (my-pmap (fn [words]
-                  (binding [*out* *err*] (print ".") (flush))
-                  (sentence/make words)))
+       (my-pmap
+        (fn [words]
+          (binding [*out* *err*] (print ".") (flush))
+          (sentence/make words)))
        (into [])))
