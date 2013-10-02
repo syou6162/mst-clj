@@ -4,7 +4,8 @@
   (:use [mst-clj.minibatch :only (*number-of-mini-batches* minibatch-update-weight)])
   (:use [mst-clj.io :only (read-mst-format-file read-gold-sentences)])
   (:use [mst-clj.evaluation
-         :only (get-dependency-accuracy get-complete-accuracy)])
+         :only (get-dependency-accuracy get-complete-accuracy
+                get-labeled-dependency-accuracy get-labeled-complete-accuracy)])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
   (:require [mst-clj.label :as label])
@@ -39,14 +40,25 @@
     (label/save-label-to-id (:label-to-id-filename opts))
     (feature/save-feature-to-id (:feature-to-id-filename opts))
     (feature/clear-feature-mapping!)
-
     (doseq [iter (range 1 (inc (:max-iter opts)))]
       (binding [*number-of-mini-batches* (if (:mini-batch opts)
                                            *number-of-mini-batches* 1)]
         (minibatch-update-weight iter weight cum-weight training-sentences))
       (serialize (get-averaged-weight (* iter n) weight cum-weight)
-                 (str iter "-" (:model-filename opts))))
-
+                 (str iter "-" (:model-filename opts)))
+      (let [decode (make-decoder
+                    (get-averaged-weight (* iter n) weight cum-weight))
+            [golds predictions] (let [golds dev-sentences
+                                      predictions (mapv decode dev-sentences)]
+                                  [golds predictions])]
+        (binding [*out* *err*]
+          (->> [iter
+                (get-dependency-accuracy golds predictions)
+                (get-complete-accuracy golds predictions)
+                (get-labeled-dependency-accuracy golds predictions)
+                (get-labeled-complete-accuracy golds predictions)]
+               (clojure.string/join ", ")
+               (println)))))
     (serialize (get-averaged-weight (* (:max-iter opts) n) weight cum-weight)
                (:model-filename opts))))
 
