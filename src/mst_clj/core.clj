@@ -7,6 +7,7 @@
          :only (get-dependency-accuracy get-complete-accuracy)])
   (:require [mst-clj.sentence :as sentence])
   (:require [mst-clj.feature :as feature])
+  (:require [mst-clj.label :as label])
   (:use [clj-utils.time :only (easily-understandable-time)])
   (:use [clj-utils.io :only (serialize deserialize)])
   (:gen-class))
@@ -23,7 +24,8 @@
            ["--test-filename" "File name for test" :default "test.txt"]
            ["--model-filename" "File name of the (saved|load) model" :default "parsing.model"]
            ["--max-iter" "Number of maximum iterations" :default 10 :parse-fn #(Integer. %)]
-           ["--feature-to-id-filename" "File name of the feature2id mapping" :default "feature-to-id.bin"]))
+           ["--feature-to-id-filename" "File name of the feature2id mapping" :default "feature-to-id.bin"]
+           ["--label-to-id-filename" "File name of the label2id mapping" :default "label-to-id.bin"]))
 
 (defn make-decoder [weight] (partial eisner weight))
 
@@ -34,6 +36,7 @@
         weight-dim (inc (feature/get-max-feature-id))
         weight (double-array weight-dim)
         cum-weight (double-array weight-dim)]
+    (label/save-label-to-id (:label-to-id-filename opts))
     (feature/save-feature-to-id (:feature-to-id-filename opts))
     (feature/clear-feature-mapping!)
 
@@ -47,10 +50,12 @@
                (:model-filename opts))))
 
 (defn eval-mode [opts]
-  (let [_ (binding [*out* *err*] (println (str "Started reading " (:feature-to-id-filename opts))))
-        _ (time (feature/load-feature-to-id! (:feature-to-id-filename opts)))
-        _ (binding [*out* *err*] (println (str "Finished reading " (:feature-to-id-filename opts))))
-        weight (deserialize (:model-filename opts))
+  (binding [*out* *err*]
+    (label/load-label-to-id! (:label-to-id-filename opts))
+    (println (str "Started reading " (:feature-to-id-filename opts)))
+    (time (feature/load-feature-to-id! (:feature-to-id-filename opts)))
+    (println (str "Finished reading " (:feature-to-id-filename opts))))
+  (let [weight (deserialize (:model-filename opts))
         decode (make-decoder weight)
         [golds predictions] (easily-understandable-time
                              (let [golds (read-gold-sentences (:test-filename opts))
