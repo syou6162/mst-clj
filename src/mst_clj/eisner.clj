@@ -1,7 +1,8 @@
 (ns mst-clj.eisner
-  (:import [mst_clj.sentence Sentence])
   (:use [mst-clj.label :only (label-to-id-mapping)])
-  (:use [mst-clj.common :only (deep-aget deep-aset)]))
+  (:use [mst-clj.common :only (deep-aget deep-aset)])
+  (:import [mst_clj.sentence Sentence])
+  (:import [mst_clj.word Word]))
 
 (defn argmax [coll]
   "Return max val and its index"
@@ -84,9 +85,10 @@
   (fn [i j]
     (->> (score-label-pairs weight sentence i j)
          (mapv (fn [[label score]]
-                 (if (= i (:head-idx (nth (:words sentence) j)))
-                   [label score]
-                   [label (inc score)])))
+                 (let [^Word w (nth (:words sentence) j)]
+                   (if (and (= i (.head w)) (= label (.label w)))
+                     [label score]
+                     [label (inc score)]))))
          (argmax))))
 
 (def eisner-for-training (partial eisner' training-argmax-score-label-fn))
