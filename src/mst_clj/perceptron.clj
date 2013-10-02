@@ -18,8 +18,9 @@
 
 (defn error-count [^Sentence gold ^Sentence prediction]
   (->> (map vector (rest (:words gold)) (rest (:words prediction)))
-       (filter (fn [[x y]]
-                 (not= (:head x) (:head y))))
+       (remove
+        (fn [[^Word x ^Word y]]
+          (and (= (.head x) (.head y)) (= (.label x) (.label y)))))
        (count)))
 
 (defn completely-correct? [^Sentence gold ^Sentence prediction]
@@ -32,8 +33,9 @@
         next-m (reduce
                 (fn [result ^Word w]
                   (let [modifier (:idx w)
+                        label (:label w)
                         head (:head w)
-                        fv-array (get-in (:edge-fvs gold) [head modifier])]
+                        fv-array (get-in (:edge-fvs gold) [head label modifier])]
                     (areduce ^ints fv-array idx ret result
                              (let [fv-idx (aget ^ints fv-array idx)
                                    v (get ret fv-idx 0)]
@@ -43,8 +45,9 @@
     (->> (reduce
           (fn [result ^Word w]
             (let [modifier (:idx w)
+                  label (:label w)
                   head (:head w)
-                  fv-array (get-in (:edge-fvs prediction) [head modifier])]
+                  fv-array (get-in (:edge-fvs prediction) [head label modifier])]
               (areduce ^ints fv-array idx ret result
                        (let [fv-idx (aget ^ints fv-array idx)
                              v (get ret fv-idx 0)]
@@ -72,27 +75,10 @@
     (aset weight fv-idx (double (+ (* v scale) (aget weight fv-idx))))))
 
 ;; Ref: http://www.ss.cs.tut.ac.jp/nlp2011/nlp2010_tutorial_okanohara.pdf
-(defn update-weight
-  [iter ^doubles weight ^doubles cum-weight gold-sentences]
-  (let [n (count gold-sentences)]
-    (->> gold-sentences
-         (map-indexed #(vector (inc %1) %2))
-         (reduce
-          (fn [[weight cum-weight] [idx gold]]
-            (let [prediction (eisner-for-training gold weight)
-                  step-size (get-step-size weight gold prediction)
-                  diff (->> (fv-diff gold prediction)
-                            (map (fn [[k v]] [k (* step-size v)])))
-                  number-of-cum-examples (+ (* iter n) idx)]
-              (update-weight! weight diff 1.0)
-              (update-weight! cum-weight diff number-of-cum-examples)
-              [weight cum-weight]))
-          [weight cum-weight]))))
-
 (defn get-averaged-weight
   "w = w_final - w_a / t"
   [cum-count ^doubles weight ^doubles cum-weight]
   (if (zero? cum-count)
     weight
     (amap weight idx ret
-          (+ (aget weight idx) (/ (aget cum-weight idx) cum-count)))))
+          (- (aget weight idx) (/ (aget cum-weight idx) cum-count)))))
