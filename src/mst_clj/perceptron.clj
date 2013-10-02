@@ -73,23 +73,6 @@
     (aset weight fv-idx (double (+ (* v scale) (aget weight fv-idx))))))
 
 ;; Ref: http://www.ss.cs.tut.ac.jp/nlp2011/nlp2010_tutorial_okanohara.pdf
-(defn update-weight
-  [iter ^doubles weight ^doubles cum-weight gold-sentences]
-  (let [n (count gold-sentences)]
-    (->> gold-sentences
-         (map-indexed #(vector (inc %1) %2))
-         (reduce
-          (fn [[weight cum-weight] [idx gold]]
-            (let [prediction (eisner-for-training gold weight)
-                  step-size (get-step-size weight gold prediction)
-                  diff (->> (fv-diff gold prediction)
-                            (map (fn [[k v]] [k (* step-size v)])))
-                  number-of-cum-examples (+ (* iter n) idx)]
-              (update-weight! weight diff 1.0)
-              (update-weight! cum-weight diff number-of-cum-examples)
-              [weight cum-weight]))
-          [weight cum-weight]))))
-
 (defn get-averaged-weight
   "w = w_final - w_a / t"
   [cum-count ^doubles weight ^doubles cum-weight]

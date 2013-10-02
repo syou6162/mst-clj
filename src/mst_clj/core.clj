@@ -1,7 +1,7 @@
 (ns mst-clj.core
   (:use [mst-clj.eisner :only (eisner)])
-  (:use [mst-clj.perceptron :only (update-weight get-averaged-weight)])
-  (:use [mst-clj.minibatch :only (minibatch-update-weight)])
+  (:use [mst-clj.perceptron :only (get-averaged-weight)])
+  (:use [mst-clj.minibatch :only (*number-of-mini-batches* minibatch-update-weight)])
   (:use [mst-clj.io :only (read-mst-format-file read-gold-sentences)])
   (:use [mst-clj.evaluation
          :only (get-dependency-accuracy get-complete-accuracy)])
@@ -41,8 +41,9 @@
     (feature/clear-feature-mapping!)
 
     (doseq [iter (range 1 (inc (:max-iter opts)))]
-      ((if (:mini-batch opts) minibatch-update-weight update-weight)
-       iter weight cum-weight training-sentences)
+      (binding [*number-of-mini-batches* (if (:mini-batch opts)
+                                           *number-of-mini-batches* 1)]
+        (minibatch-update-weight iter weight cum-weight training-sentences))
       (serialize (get-averaged-weight (* iter n) weight cum-weight)
                  (str iter "-" (:model-filename opts))))
 
