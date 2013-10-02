@@ -1,5 +1,6 @@
 (ns mst-clj.feature
   (:use [mst-clj.mapping :only (def-obj-and-id-mapping)])
+  (:require [clojure.core.reducers :as r])
   (:import [mst_clj.word Word]))
 
 (def-obj-and-id-mapping feature)
@@ -155,15 +156,16 @@
 
 (defn get-fv [sentence i j]
   (let [dir-dist-feature (direction-and-distance-feature sentence i j)
-        all-basic-features (->> (map-indexed #(vector %1 %2) all-basic-features)
-                                (map (fn [[idx feature-fn]] [idx (feature-fn sentence i j)]))
-                                (remove #(-> % second nil?))
-                                (mapv (fn [[idx f]] (str idx \& f))))
-        bet-fv (mapv #(str "b&" %) (between-features sentence i j))]
+        all-basic-features (->> all-basic-features
+                                (r/map (fn [feature-fn]
+                                         (if-let [result (feature-fn sentence i j)]
+                                           (str (-> feature-fn meta :name) \& result))))
+                                (r/remove nil?)
+                                (r/fold (r/monoid into vector) conj))
+        bet-fv (r/map #(str "b&" %) (between-features sentence i j))]
     (->> (into all-basic-features bet-fv)
-         (map (fn [f] [f (str dir-dist-feature \& f)]))
-         (reduce into [])
-         (cons dir-dist-feature)
-         (map feature-to-id)
-         (remove nil?)
-         (int-array))))
+         (r/map (fn [f] [f (str dir-dist-feature \& f)]))
+         (r/flatten)
+         (r/map feature-to-id)
+         (r/remove nil?)
+         (r/fold (r/monoid into vector) conj))))
