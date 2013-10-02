@@ -96,4 +96,4 @@
   (if (zero? cum-count)
     weight
     (amap weight idx ret
-          (+ (aget weight idx) (/ (aget cum-weight idx) cum-count)))))
+          (- (aget weight idx) (/ (aget cum-weight idx) cum-count)))))
