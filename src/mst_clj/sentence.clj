@@ -7,15 +7,15 @@
 (defn make [words]
   (let [n (count words)
         init-edge-fvs {}
-        edge-fvs (reduce (fn [result [i j]]
-                           (binding [*update-feature-id?* false]
-                             (let [fv (get-fv words i j)]
-                               (->> (label-to-id-mapping)
-                                    (reduce
-                                     (fn [result [label id]]
-                                       (assoc-in result [i label j] (get-labeled-fv label fv)))
-                                     result)))))
-                         init-edge-fvs
-                         (for [i (range n), j (range n) :when (not= i j)]
-                           [i j]))]
+        labels (set (map first (label-to-id-mapping)))
+        edge-fvs (binding [*update-feature-id?* false]
+                   (->> (for [i (range n), j (range n)
+                              :when (not= i j)
+                              :let [fv (get-fv words i j)]
+                              label labels]
+                          [i label j fv])
+                        (reduce (fn [result [i label j fv]]
+                                  (assoc-in result [i label j]
+                                            (get-labeled-fv label fv)))
+                                init-edge-fvs)))]
     (Sentence. words edge-fvs)))
