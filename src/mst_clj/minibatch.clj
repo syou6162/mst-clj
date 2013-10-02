@@ -42,7 +42,7 @@
           (let [step-size (get-step-size weight gold prediction fv-diff)
                 diff (->> fv-diff
                           (map (fn [[k v]] [k (* step-size v)])))
-                number-of-cum-examples (+ (* iter n) idx)]
+                number-of-cum-examples (+ (* (dec iter) n) idx)]
             (update-weight! weight diff 1.0)
             (update-weight! cum-weight diff number-of-cum-examples)))))
     (->> [iter
