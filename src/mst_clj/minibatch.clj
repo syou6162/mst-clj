@@ -3,7 +3,9 @@
   (:use [mst-clj.eisner :only (eisner-for-training)])
   (:use [mst-clj.perceptron
          :only (get-fv-diff get-step-size update-weight! completely-correct?)])
-  (:use [mst-clj.evaluation :only (get-dependency-accuracy get-complete-accuracy)])
+  (:use [mst-clj.evaluation
+         :only (get-dependency-accuracy get-labeled-dependency-accuracy
+                get-complete-accuracy get-labeled-complete-accuracy)])
   (:import [mst_clj.word Word])
   (:import [mst_clj.sentence Sentence]))
 
@@ -15,7 +17,7 @@
                     (my-pmap
                      *number-of-threads*
                      (fn [[idx gold]]
-                       (let [prediction (eisner-for-training gold weight)
+                       (let [prediction (eisner-for-training weight gold)
                              fv-diff (get-fv-diff gold prediction)]
                          [idx gold prediction fv-diff]))))
         predictions (mapv #(nth % 2) result)]
@@ -40,11 +42,13 @@
           (let [step-size (get-step-size weight gold prediction fv-diff)
                 diff (->> fv-diff
                           (map (fn [[k v]] [k (* step-size v)])))
-                number-of-cum-examples (+ (* iter n) idx)]
+                number-of-cum-examples (+ (* (dec iter) n) idx)]
             (update-weight! weight diff 1.0)
             (update-weight! cum-weight diff number-of-cum-examples)))))
     (->> [iter
           (get-dependency-accuracy gold-sentences @predicts)
-          (get-complete-accuracy gold-sentences @predicts)]
+          (get-complete-accuracy gold-sentences @predicts)
+          (get-labeled-dependency-accuracy gold-sentences @predicts)
+          (get-labeled-complete-accuracy gold-sentences @predicts)]
          (clojure.string/join ", ")
        (println))))
